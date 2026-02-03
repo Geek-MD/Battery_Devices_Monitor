@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Battery Devices Monitor",
+        "description": "Set up the battery monitoring threshold",
+        "data": {
+          "battery_threshold": "Battery threshold (%)"
+        },
+        "data_description": {
+          "battery_threshold": "Battery level below which a device is considered to have a problem (1-100%)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Battery Devices Monitor is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Battery Devices Monitor",
+        "description": "Update the battery monitoring threshold",
+        "data": {
+          "battery_threshold": "Battery threshold (%)"
+        },
+        "data_description": {
+          "battery_threshold": "Battery level below which a device is considered to have a problem (1-100%)"
+        }
+      }
+    }
+  }
+}

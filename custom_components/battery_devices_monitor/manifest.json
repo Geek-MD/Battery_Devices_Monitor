@@ -1,0 +1,13 @@
+{
+  "domain": "battery_devices_monitor",
+  "name": "Battery Devices Monitor",
+  "codeowners": ["@Geek-MD"],
+  "config_flow": true,
+  "documentation": "https://github.com/Geek-MD/Battery_Devices_Monitor",
+  "issue_tracker": "https://github.com/Geek-MD/Battery_Devices_Monitor/issues",
+  "iot_class": "calculated",
+  "requirements": [],
+  "version": "1.0.0",
+  "dependencies": [],
+  "homeassistant": "2024.1.0"
+}
