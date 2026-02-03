@@ -10,6 +10,16 @@
         "data_description": {
           "battery_threshold": "Battery level below which a device is considered to have a problem (0-100%)"
         }
+      },
+      "exclude_devices": {
+        "title": "Select Devices to Exclude",
+        "description": "Select battery devices you want to exclude from monitoring (optional)",
+        "data": {
+          "excluded_devices": "Excluded devices"
+        },
+        "data_description": {
+          "excluded_devices": "Select devices to exclude from monitoring"
+        }
       }
     },
     "abort": {

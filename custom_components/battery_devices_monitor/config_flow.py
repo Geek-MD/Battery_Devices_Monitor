@@ -30,22 +30,20 @@ class BatteryDevicesMonitorConfigFlow(
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._threshold: int | None = None
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
+        """Handle the initial step - configure threshold."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Check if already configured
-            await self.async_set_unique_id(DOMAIN)
-            self._abort_if_unique_id_configured()
-
-            return self.async_create_entry(
-                title="Battery Devices Monitor",
-                data={},
-                options=user_input,
-            )
+            # Store threshold and move to next step
+            self._threshold = user_input[CONF_BATTERY_THRESHOLD]
+            return await self.async_step_exclude_devices()
 
         data_schema = vol.Schema(
             {
@@ -66,6 +64,60 @@ class BatteryDevicesMonitorConfigFlow(
             step_id="user",
             data_schema=data_schema,
             errors=errors,
+        )
+
+    def _get_battery_devices(self) -> dict[str, str]:
+        """Get all devices with battery level attribute."""
+        battery_devices = {}
+        for state in self.hass.states.async_all():
+            # Check for any battery attribute
+            has_battery = False
+            for attr_name in BATTERY_ATTRS:
+                if state.attributes.get(attr_name) is not None:
+                    has_battery = True
+                    break
+            
+            if has_battery:
+                # Use friendly_name if available, otherwise entity_id
+                device_name = state.attributes.get("friendly_name", state.entity_id)
+                battery_devices[state.entity_id] = device_name
+        return battery_devices
+
+    async def async_step_exclude_devices(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the second step - select devices to exclude."""
+        if user_input is not None:
+            # Check if already configured
+            await self.async_set_unique_id(DOMAIN)
+            self._abort_if_unique_id_configured()
+
+            # Combine threshold and excluded devices
+            config_data = {
+                CONF_BATTERY_THRESHOLD: self._threshold,
+                CONF_EXCLUDED_DEVICES: user_input.get(CONF_EXCLUDED_DEVICES, []),
+            }
+
+            return self.async_create_entry(
+                title="Battery Devices Monitor",
+                data={},
+                options=config_data,
+            )
+
+        battery_devices = self._get_battery_devices()
+
+        data_schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_EXCLUDED_DEVICES,
+                    default=DEFAULT_EXCLUDED_DEVICES,
+                ): cv.multi_select(battery_devices),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="exclude_devices",
+            data_schema=data_schema,
         )
 
     @staticmethod
