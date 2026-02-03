@@ -3,10 +3,10 @@
   "name": "Battery Devices Monitor",
   "codeowners": ["@Geek-MD"],
   "config_flow": true,
+  "dependencies": [],
   "documentation": "https://github.com/Geek-MD/Battery_Devices_Monitor",
-  "issue_tracker": "https://github.com/Geek-MD/Battery_Devices_Monitor/issues",
   "iot_class": "calculated",
+  "issue_tracker": "https://github.com/Geek-MD/Battery_Devices_Monitor/issues",
   "requirements": [],
-  "version": "1.0.0",
-  "dependencies": []
+  "version": "1.0.0"
 }
