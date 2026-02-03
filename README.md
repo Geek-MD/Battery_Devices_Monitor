@@ -1,10 +1,16 @@
 # Battery Devices Monitor
 
-[![GitHub Release](https://img.shields.io/github/release/Geek-MD/Battery_Devices_Monitor.svg?style=flat-square)](https://github.com/Geek-MD/Battery_Devices_Monitor/releases)
-[![GitHub Activity](https://img.shields.io/github/commit-activity/y/Geek-MD/Battery_Devices_Monitor.svg?style=flat-square)](https://github.com/Geek-MD/Battery_Devices_Monitor/commits/main)
-[![License](https://img.shields.io/github/license/Geek-MD/Battery_Devices_Monitor.svg?style=flat-square)](LICENSE)
-[![hacs](https://img.shields.io/badge/HACS-Custom-orange.svg?style=flat-square)](https://github.com/hacs/integration)
-[![Validate](https://github.com/Geek-MD/Battery_Devices_Monitor/actions/workflows/ci.yaml/badge.svg)](https://github.com/Geek-MD/Battery_Devices_Monitor/actions/workflows/ci.yaml)
+[![Geek-MD - Battery Devices Monitor](https://img.shields.io/static/v1?label=Geek-MD&message=Battery%20Devices%20Monitor&color=blue&logo=github)](https://github.com/Geek-MD/Battery_Devices_Monitor)
+[![Stars](https://img.shields.io/github/stars/Geek-MD/Battery_Devices_Monitor?style=social)](https://github.com/Geek-MD/Battery_Devices_Monitor)
+[![Forks](https://img.shields.io/github/forks/Geek-MD/Battery_Devices_Monitor?style=social)](https://github.com/Geek-MD/Battery_Devices_Monitor)
+
+[![GitHub Release](https://img.shields.io/github/release/Geek-MD/Battery_Devices_Monitor?include_prereleases&sort=semver&color=blue)](https://github.com/Geek-MD/Battery_Devices_Monitor/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue)](https://github.com/Geek-MD/Battery_Devices_Monitor/blob/main/LICENSE)
+[![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom%20Repository-blue)](https://hacs.xyz/)
+
+[![Ruff + Mypy + Hassfest](https://github.com/Geek-MD/Battery_Devices_Monitor/actions/workflows/ci.yaml/badge.svg)](https://github.com/Geek-MD/Battery_Devices_Monitor/actions/workflows/ci.yaml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 
 A Home Assistant custom integration that monitors all battery-powered devices and provides a single sensor showing "OK" or "Problem" status.
 
@@ -153,4 +159,9 @@ For issues and feature requests, please use the [GitHub issue tracker](https://g
 
 ---
 
-**Star this repository if you find it useful! ⭐**
+<div align="center">
+  
+💻 **Proudly developed with GitHub Copilot** 🚀
+
+</div>
+
