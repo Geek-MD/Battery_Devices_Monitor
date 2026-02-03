@@ -65,7 +65,6 @@ class BatteryMonitorSensor(SensorEntity):
             name="Battery Devices Monitor",
             manufacturer="Geek-MD",
             model="Battery Monitor",
-            entry_type=None,
         )
 
     @property
