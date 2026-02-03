@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-03
+
+### Added
+- Two-step initial configuration flow: configure threshold first, then optionally select devices to exclude from a filtered list
+- Device registration support to allow the sensor to be assigned to an area in Home Assistant
+- Multi-attribute battery detection: now checks `battery_level`, `battery`, and `Battery` attributes to discover more devices (especially Zigbee devices)
+
 ### Changed
-- Attributes `devices_below_threshold` and `devices_above_threshold` now include both device name and battery level as dictionaries instead of just device names
-- Updated README with new attribute structure and improved automation examples
+- Battery threshold field changed from optional to required in configuration
+- Battery threshold input changed from slider to number box for better control
+- Battery threshold validation range updated from 1-100% to 0-100%
+- Configuration UI now shows excluded device selection as second step during initial setup with filtered battery device list
+- Improved device discovery to detect 20+ battery-powered devices instead of only 5
+
+### Fixed
+- Missing Zigbee and other battery devices that use alternate attribute names (`battery` instead of `battery_level`)
 
 ## [1.0.0] - 2026-02-03
 
@@ -25,3 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full compliance with hassfest, ruff, and mypy
 - Comprehensive documentation and examples
 - HACS compatibility
+
+### Changed
+- Attributes `devices_below_threshold` and `devices_above_threshold` now include both device name and battery level as dictionaries instead of just device names
+- Updated README with new attribute structure and improved automation examples

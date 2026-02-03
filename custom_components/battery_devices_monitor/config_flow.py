@@ -6,11 +6,12 @@ from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import ATTR_BATTERY_LEVEL
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import selector
 
 from .const import (
+    BATTERY_ATTRS,
     CONF_BATTERY_THRESHOLD,
     CONF_EXCLUDED_DEVICES,
     DEFAULT_BATTERY_THRESHOLD,
@@ -29,29 +30,33 @@ class BatteryDevicesMonitorConfigFlow(
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._threshold: int | None = None
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
+        """Handle the initial step - configure threshold."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Check if already configured
-            await self.async_set_unique_id(DOMAIN)
-            self._abort_if_unique_id_configured()
-
-            return self.async_create_entry(
-                title="Battery Devices Monitor",
-                data={},
-                options=user_input,
-            )
+            # Store threshold and move to next step
+            self._threshold = user_input[CONF_BATTERY_THRESHOLD]
+            return await self.async_step_exclude_devices()
 
         data_schema = vol.Schema(
             {
-                vol.Optional(
+                vol.Required(
                     CONF_BATTERY_THRESHOLD,
                     default=DEFAULT_BATTERY_THRESHOLD,
-                ): vol.All(cv.positive_int, vol.Range(min=1, max=100)),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0,
+                        max=100,
+                        mode=selector.NumberSelectorMode.BOX,
+                    ),
+                ),
             }
         )
 
@@ -59,6 +64,60 @@ class BatteryDevicesMonitorConfigFlow(
             step_id="user",
             data_schema=data_schema,
             errors=errors,
+        )
+
+    def _get_battery_devices(self) -> dict[str, str]:
+        """Get all devices with battery level attribute."""
+        battery_devices = {}
+        for state in self.hass.states.async_all():
+            # Check for any battery attribute
+            has_battery = False
+            for attr_name in BATTERY_ATTRS:
+                if state.attributes.get(attr_name) is not None:
+                    has_battery = True
+                    break
+            
+            if has_battery:
+                # Use friendly_name if available, otherwise entity_id
+                device_name = state.attributes.get("friendly_name", state.entity_id)
+                battery_devices[state.entity_id] = device_name
+        return battery_devices
+
+    async def async_step_exclude_devices(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the second step - select devices to exclude."""
+        if user_input is not None:
+            # Check if already configured
+            await self.async_set_unique_id(DOMAIN)
+            self._abort_if_unique_id_configured()
+
+            # Combine threshold and excluded devices
+            config_data = {
+                CONF_BATTERY_THRESHOLD: self._threshold,
+                CONF_EXCLUDED_DEVICES: user_input.get(CONF_EXCLUDED_DEVICES, []),
+            }
+
+            return self.async_create_entry(
+                title="Battery Devices Monitor",
+                data={},
+                options=config_data,
+            )
+
+        battery_devices = self._get_battery_devices()
+
+        data_schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_EXCLUDED_DEVICES,
+                    default=DEFAULT_EXCLUDED_DEVICES,
+                ): cv.multi_select(battery_devices),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="exclude_devices",
+            data_schema=data_schema,
         )
 
     @staticmethod
@@ -81,8 +140,14 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         """Get all devices with battery level attribute."""
         battery_devices = {}
         for state in self.hass.states.async_all():
-            battery_level = state.attributes.get(ATTR_BATTERY_LEVEL)
-            if battery_level is not None:
+            # Check for any battery attribute
+            has_battery = False
+            for attr_name in BATTERY_ATTRS:
+                if state.attributes.get(attr_name) is not None:
+                    has_battery = True
+                    break
+            
+            if has_battery:
                 # Use friendly_name if available, otherwise entity_id
                 device_name = state.attributes.get("friendly_name", state.entity_id)
                 battery_devices[state.entity_id] = device_name
@@ -101,12 +166,18 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
+                    vol.Required(
                         CONF_BATTERY_THRESHOLD,
                         default=self.config_entry.options.get(
                             CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
                         ),
-                    ): vol.All(cv.positive_int, vol.Range(min=1, max=100)),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=100,
+                            mode=selector.NumberSelectorMode.BOX,
+                        ),
+                    ),
                     vol.Optional(
                         CONF_EXCLUDED_DEVICES,
                         default=self.config_entry.options.get(
