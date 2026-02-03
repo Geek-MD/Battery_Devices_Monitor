@@ -1,0 +1,4 @@
+# --- Dev tools ---
+mypy==1.19.1
+ruff==0.14.14
+voluptuous==0.15.2
