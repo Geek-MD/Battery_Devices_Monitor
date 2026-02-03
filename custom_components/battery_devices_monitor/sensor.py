@@ -53,8 +53,8 @@ class BatteryMonitorSensor(SensorEntity):
         self._config_entry = config_entry
         self._attr_unique_id = f"{DOMAIN}_sensor"
         self._state = STATE_OK
-        self._devices_below_threshold: list[str] = []
-        self._devices_above_threshold: list[str] = []
+        self._devices_below_threshold: list[dict[str, Any]] = []
+        self._devices_above_threshold: list[dict[str, Any]] = []
         self._total_devices = 0
         self._previous_low_devices: set[str] = set()
 
@@ -132,22 +132,32 @@ class BatteryMonitorSensor(SensorEntity):
                         "friendly_name", state.entity_id
                     )
 
+                    device_info = {
+                        "name": device_name,
+                        "battery_level": battery_value,
+                    }
+
                     if battery_value < threshold:
-                        devices_below_threshold.append(device_name)
+                        devices_below_threshold.append(device_info)
                         devices_below_info[state.entity_id] = {
                             "name": device_name,
                             "battery_level": battery_value,
                             "entity_id": state.entity_id,
                         }
                     else:
-                        devices_above_threshold.append(device_name)
+                        devices_above_threshold.append(device_info)
 
                 except (ValueError, TypeError):
                     # Skip if battery_level is not a valid number
                     continue
 
-        self._devices_below_threshold = sorted(devices_below_threshold)
-        self._devices_above_threshold = sorted(devices_above_threshold)
+        # Sort by name
+        self._devices_below_threshold = sorted(
+            devices_below_threshold, key=lambda x: x["name"]
+        )
+        self._devices_above_threshold = sorted(
+            devices_above_threshold, key=lambda x: x["name"]
+        )
         self._total_devices = len(devices_below_threshold) + len(
             devices_above_threshold
         )

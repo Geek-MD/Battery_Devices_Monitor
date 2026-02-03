@@ -54,9 +54,24 @@ After installation and configuration, the integration creates a sensor named `se
 - **Problem**: One or more devices have battery levels below the threshold
 
 ### Attributes
-- `devices_below_threshold`: List of device friendly names with battery below threshold
-- `devices_above_threshold`: List of device friendly names with battery above threshold
+- `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (friendly name) and `battery_level` (percentage)
+- `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (friendly name) and `battery_level` (percentage)
 - `total_devices`: Total count of monitored devices
+
+**Example attribute structure:**
+```json
+{
+  "devices_below_threshold": [
+    {"name": "Sensor Kitchen", "battery_level": 15},
+    {"name": "Remote Living Room", "battery_level": 18}
+  ],
+  "devices_above_threshold": [
+    {"name": "Sensor Bedroom", "battery_level": 85},
+    {"name": "Motion Detector", "battery_level": 92}
+  ],
+  "total_devices": 4
+}
+```
 
 ### Example Automation
 
@@ -71,7 +86,12 @@ automation:
       - service: notify.mobile_app
         data:
           title: "Low Battery Alert"
-          message: "One or more devices have low battery!"
+          message: >
+            {% set devices = state_attr('sensor.battery_monitor_status', 'devices_below_threshold') %}
+            {{ devices | length }} device(s) have low battery:
+            {% for device in devices %}
+            - {{ device.name }}: {{ device.battery_level }}%
+            {% endfor %}
 
   - alias: "Notify Low Battery Event"
     trigger:
