@@ -8,6 +8,5 @@
   "iot_class": "calculated",
   "requirements": [],
   "version": "1.0.0",
-  "dependencies": [],
-  "homeassistant": "2024.1.0"
+  "dependencies": []
 }
