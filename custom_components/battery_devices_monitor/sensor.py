@@ -5,14 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import ATTR_BATTERY_LEVEL
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import (
     ATTR_DEVICES_ABOVE_THRESHOLD,
     ATTR_DEVICES_BELOW_THRESHOLD,
     ATTR_TOTAL_DEVICES,
+    BATTERY_ATTRS,
     CONF_BATTERY_THRESHOLD,
     CONF_EXCLUDED_DEVICES,
     DEFAULT_BATTERY_THRESHOLD,
@@ -57,6 +58,15 @@ class BatteryMonitorSensor(SensorEntity):
         self._devices_above_threshold: list[dict[str, Any]] = []
         self._total_devices = 0
         self._previous_low_devices: set[str] = set()
+        
+        # Device info to allow area assignment
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, config_entry.entry_id)},
+            name="Battery Devices Monitor",
+            manufacturer="Geek-MD",
+            model="Battery Monitor",
+            entry_type=None,
+        )
 
     @property
     def state(self) -> str:
@@ -101,6 +111,21 @@ class BatteryMonitorSensor(SensorEntity):
         # Schedule an update when any state changes
         self.async_schedule_update_ha_state(force_refresh=True)
 
+    def _get_battery_level(self, attributes: dict[str, Any]) -> float | None:
+        """Get battery level from entity attributes.
+        
+        Checks multiple attribute names commonly used for battery level.
+        Returns the battery level as a float, or None if not found.
+        """
+        for attr_name in BATTERY_ATTRS:
+            battery_value = attributes.get(attr_name)
+            if battery_value is not None:
+                try:
+                    return float(battery_value)
+                except (ValueError, TypeError):
+                    continue
+        return None
+
     async def async_update(self) -> None:
         """Update the sensor state."""
         threshold = self._config_entry.options.get(
@@ -120,36 +145,29 @@ class BatteryMonitorSensor(SensorEntity):
             if state.entity_id in excluded_devices:
                 continue
 
-            # Check if entity has battery_level attribute
-            battery_level = state.attributes.get(ATTR_BATTERY_LEVEL)
+            # Check if entity has any battery attribute
+            battery_level = self._get_battery_level(state.attributes)
 
             if battery_level is not None:
-                try:
-                    battery_value = float(battery_level)
+                # Use friendly_name if available, otherwise use entity_id
+                device_name = state.attributes.get(
+                    "friendly_name", state.entity_id
+                )
 
-                    # Use friendly_name if available, otherwise use entity_id
-                    device_name = state.attributes.get(
-                        "friendly_name", state.entity_id
-                    )
+                device_info = {
+                    "name": device_name,
+                    "battery_level": battery_level,
+                }
 
-                    device_info = {
+                if battery_level < threshold:
+                    devices_below_threshold.append(device_info)
+                    devices_below_info[state.entity_id] = {
                         "name": device_name,
-                        "battery_level": battery_value,
+                        "battery_level": battery_level,
+                        "entity_id": state.entity_id,
                     }
-
-                    if battery_value < threshold:
-                        devices_below_threshold.append(device_info)
-                        devices_below_info[state.entity_id] = {
-                            "name": device_name,
-                            "battery_level": battery_value,
-                            "entity_id": state.entity_id,
-                        }
-                    else:
-                        devices_above_threshold.append(device_info)
-
-                except (ValueError, TypeError):
-                    # Skip if battery_level is not a valid number
-                    continue
+                else:
+                    devices_above_threshold.append(device_info)
 
         # Sort by name
         self._devices_below_threshold = sorted(

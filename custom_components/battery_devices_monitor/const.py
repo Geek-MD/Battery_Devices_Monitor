@@ -11,6 +11,13 @@ CONF_EXCLUDED_DEVICES: Final = "excluded_devices"
 DEFAULT_BATTERY_THRESHOLD: Final = 20
 DEFAULT_EXCLUDED_DEVICES: Final[list[str]] = []
 
+# Battery attribute names to check (in order of preference)
+BATTERY_ATTRS: Final[list[str]] = [
+    "battery_level",  # Home Assistant standard
+    "battery",        # Common in Zigbee devices
+    "Battery",        # Some integrations use capitalized
+]
+
 # Sensor attributes
 ATTR_DEVICES_ABOVE_THRESHOLD: Final = "devices_above_threshold"
 ATTR_DEVICES_BELOW_THRESHOLD: Final = "devices_below_threshold"

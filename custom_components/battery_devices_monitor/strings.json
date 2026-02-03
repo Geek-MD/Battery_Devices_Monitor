@@ -8,7 +8,7 @@
           "battery_threshold": "Battery threshold (%)"
         },
         "data_description": {
-          "battery_threshold": "Battery level below which a device is considered to have a problem (1-100%)"
+          "battery_threshold": "Battery level below which a device is considered to have a problem (0-100%)"
         }
       }
     },
@@ -26,7 +26,7 @@
           "excluded_devices": "Excluded devices"
         },
         "data_description": {
-          "battery_threshold": "Battery level below which a device is considered to have a problem (1-100%)",
+          "battery_threshold": "Battery level below which a device is considered to have a problem (0-100%)",
           "excluded_devices": "Select devices to exclude from monitoring"
         }
       }
