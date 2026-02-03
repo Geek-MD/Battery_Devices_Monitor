@@ -20,6 +20,8 @@ on:
 jobs:
   lint-type-validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       # Checkout the selected branch when invoked via workflow_dispatch
