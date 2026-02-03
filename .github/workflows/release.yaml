@@ -1,0 +1,96 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'custom_components/battery_devices_monitor/manifest.json'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get version from manifest
+        id: get_version
+        run: |
+          VERSION=$(jq -r '.version' custom_components/battery_devices_monitor/manifest.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+          echo "Tag: v$VERSION"
+      
+      - name: Extract changelog for current version
+        id: changelog
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          
+          # Check if CHANGELOG.md exists
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "No CHANGELOG.md found, using default release notes"
+            echo "release_notes=Release v$VERSION" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Extract the section for the current version
+          # This will extract content between [VERSION] and the next ## heading or end of file
+          CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit;
+              if ($0 ~ "\\[" ver "\\]") {
+                found=1;
+                next;
+              }
+            }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md | sed '/^$/d' | head -100)
+          
+          # If we found changelog content, use it; otherwise use default
+          if [ -n "$CHANGELOG_CONTENT" ]; then
+            echo "Found changelog for version $VERSION"
+            # Save to a temporary file to handle multiline content
+            echo "$CHANGELOG_CONTENT" > /tmp/release_notes.txt
+            {
+              echo "release_notes<<EOF"
+              cat /tmp/release_notes.txt
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "No changelog found for version $VERSION, using default"
+            echo "release_notes=Release v$VERSION - See CHANGELOG.md for details" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          git fetch --tags
+          if git tag -l "v${{ steps.get_version.outputs.version }}" | grep -q .; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag v${{ steps.get_version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag v${{ steps.get_version.outputs.version }} does not exist"
+          fi
+      
+      - name: Create Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          release_name: ${{ steps.get_version.outputs.tag }}
+          body: ${{ steps.changelog.outputs.release_notes }}
+          draft: false
+          prerelease: false

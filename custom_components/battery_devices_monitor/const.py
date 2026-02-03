@@ -5,9 +5,11 @@ DOMAIN: Final = "battery_devices_monitor"
 
 # Configuration keys
 CONF_BATTERY_THRESHOLD: Final = "battery_threshold"
+CONF_EXCLUDED_DEVICES: Final = "excluded_devices"
 
 # Default values
 DEFAULT_BATTERY_THRESHOLD: Final = 20
+DEFAULT_EXCLUDED_DEVICES: Final[list[str]] = []
 
 # Sensor attributes
 ATTR_DEVICES_ABOVE_THRESHOLD: Final = "devices_above_threshold"
@@ -20,3 +22,6 @@ STATE_PROBLEM: Final = "Problem"
 
 # Sensor name
 SENSOR_NAME: Final = "Battery Monitor Status"
+
+# Event
+EVENT_BATTERY_LOW: Final = "battery_devices_monitor_low_battery"

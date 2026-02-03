@@ -20,12 +20,14 @@
     "step": {
       "init": {
         "title": "Configure Battery Devices Monitor",
-        "description": "Update the battery monitoring threshold",
+        "description": "Update the battery monitoring threshold and excluded devices",
         "data": {
-          "battery_threshold": "Battery threshold (%)"
+          "battery_threshold": "Battery threshold (%)",
+          "excluded_devices": "Excluded devices"
         },
         "data_description": {
-          "battery_threshold": "Battery level below which a device is considered to have a problem (1-100%)"
+          "battery_threshold": "Battery level below which a device is considered to have a problem (1-100%)",
+          "excluded_devices": "Select devices to exclude from monitoring"
         }
       }
     }

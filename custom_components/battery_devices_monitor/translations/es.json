@@ -20,12 +20,14 @@
     "step": {
       "init": {
         "title": "Configurar Monitor de Dispositivos con Batería",
-        "description": "Actualizar el umbral de monitoreo de batería",
+        "description": "Actualizar el umbral de monitoreo de batería y dispositivos excluidos",
         "data": {
-          "battery_threshold": "Umbral de batería (%)"
+          "battery_threshold": "Umbral de batería (%)",
+          "excluded_devices": "Dispositivos excluidos"
         },
         "data_description": {
-          "battery_threshold": "Nivel de batería por debajo del cual un dispositivo se considera con problema (1-100%)"
+          "battery_threshold": "Nivel de batería por debajo del cual un dispositivo se considera con problema (1-100%)",
+          "excluded_devices": "Seleccione dispositivos a excluir del monitoreo"
         }
       }
     }

@@ -1,22 +1,36 @@
 """Config flow for Battery Devices Monitor integration."""
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.const import ATTR_BATTERY_LEVEL
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
-from .const import CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD, DOMAIN
+from .const import (
+    CONF_BATTERY_THRESHOLD,
+    CONF_EXCLUDED_DEVICES,
+    DEFAULT_BATTERY_THRESHOLD,
+    DEFAULT_EXCLUDED_DEVICES,
+    DOMAIN,
+)
+
+if TYPE_CHECKING:
+    from homeassistant.data_entry_flow import FlowResult
 
 
-class BatteryDevicesMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class BatteryDevicesMonitorConfigFlow(
+    config_entries.ConfigFlow, domain=DOMAIN  # type: ignore[call-arg]
+):
     """Handle a config flow for Battery Devices Monitor."""
 
     VERSION = 1
 
     async def async_step_user(
-        self, user_input: dict[str, any] | None = None
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
@@ -63,12 +77,25 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
+    def _get_battery_devices(self) -> dict[str, str]:
+        """Get all devices with battery level attribute."""
+        battery_devices = {}
+        for state in self.hass.states.async_all():
+            battery_level = state.attributes.get(ATTR_BATTERY_LEVEL)
+            if battery_level is not None:
+                # Use friendly_name if available, otherwise entity_id
+                device_name = state.attributes.get("friendly_name", state.entity_id)
+                battery_devices[state.entity_id] = device_name
+        return battery_devices
+
     async def async_step_init(
-        self, user_input: dict[str, any] | None = None
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
+
+        battery_devices = self._get_battery_devices()
 
         return self.async_show_form(
             step_id="init",
@@ -80,6 +107,12 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
                             CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
                         ),
                     ): vol.All(cv.positive_int, vol.Range(min=1, max=100)),
+                    vol.Optional(
+                        CONF_EXCLUDED_DEVICES,
+                        default=self.config_entry.options.get(
+                            CONF_EXCLUDED_DEVICES, DEFAULT_EXCLUDED_DEVICES
+                        ),
+                    ): cv.multi_select(battery_devices),
                 }
             ),
         )

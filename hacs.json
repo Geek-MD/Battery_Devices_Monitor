@@ -1,0 +1,7 @@
+{
+  "name": "Battery Devices Monitor",
+  "hacs": "1.6.0",
+  "domains": ["sensor"],
+  "iot_class": "Calculated",
+  "homeassistant": "2024.1.0"
+}
