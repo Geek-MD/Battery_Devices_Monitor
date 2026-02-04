@@ -159,7 +159,10 @@ class BatteryMonitorSensor(SensorEntity):
             # a battery level yet, try to use the state value
             if battery_level is None and self._is_battery_entity(state.entity_id):
                 try:
-                    battery_level = float(state.state)
+                    potential_level = float(state.state)
+                    # Validate range - battery levels should be between 0 and 100
+                    if 0 <= potential_level <= 100:
+                        battery_level = potential_level
                 except (ValueError, TypeError):
                     battery_level = None
 
