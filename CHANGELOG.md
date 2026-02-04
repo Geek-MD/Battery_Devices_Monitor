@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-02-04
+
+### Fixed
+- Configuration flow 500 Internal Server Error when reconfiguring the integration
+- Exclusion list now uses the same device names as sensor attributes (from device registry)
+- All monitored devices now appear in the exclusion list (including Robovac, PIR sensors, etc.)
+
+### Added
+- Area information in sensor attributes for easier device identification
+- Area information in device exclusion list (displayed as "Device Name (Area)")
+- Shared utility module (`utils.py`) for consistent battery device detection across the integration
+
+### Changed
+- Refactored battery device detection logic into shared utilities
+- Config flow and sensor now use the same device identification method
+- Device display names now include area information when available (format: "Device Name (Area)")
+
 ## [1.3.0] - 2026-02-04
 
 ### Fixed
