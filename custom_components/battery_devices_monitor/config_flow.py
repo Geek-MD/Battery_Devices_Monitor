@@ -11,42 +11,16 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import selector
 
 from .const import (
-    BATTERY_ATTRS,
     CONF_BATTERY_THRESHOLD,
     CONF_EXCLUDED_DEVICES,
     DEFAULT_BATTERY_THRESHOLD,
     DEFAULT_EXCLUDED_DEVICES,
     DOMAIN,
 )
+from .utils import get_all_battery_devices
 
 if TYPE_CHECKING:
     from homeassistant.data_entry_flow import FlowResult
-
-
-def _is_battery_device(state: Any) -> bool:
-    """Check if a state object represents a battery device.
-
-    Uses both attribute checking and heuristic to identify battery devices.
-    Returns True if the entity has battery attributes or if it has 'battery'
-    in its entity_id and a valid numeric state in the range 0-100.
-    """
-    # Check for any battery attribute
-    has_battery = False
-    for attr_name in BATTERY_ATTRS:
-        if state.attributes.get(attr_name) is not None:
-            has_battery = True
-            break
-
-    # Heuristic: Also check if entity_id contains "battery"
-    if not has_battery and "battery" in state.entity_id.lower():
-        # Verify the state is a valid battery level (0-100)
-        try:
-            level = float(state.state)
-            has_battery = 0 <= level <= 100
-        except (ValueError, TypeError):
-            pass
-
-    return has_battery
 
 
 class BatteryDevicesMonitorConfigFlow(
@@ -94,13 +68,24 @@ class BatteryDevicesMonitorConfigFlow(
         )
 
     def _get_battery_devices(self) -> dict[str, str]:
-        """Get all devices with battery level attribute."""
+        """Get all devices with battery level attribute.
+        
+        Returns a dictionary where:
+        - Key: device_id or entity_id (unique identifier)
+        - Value: display name with area (if available)
+        """
+        all_devices = get_all_battery_devices(self.hass)
+        
+        # Create display dict for the multi-select
         battery_devices = {}
-        for state in self.hass.states.async_all():
-            if _is_battery_device(state):
-                # Use friendly_name if available, otherwise entity_id
-                device_name = state.attributes.get("friendly_name", state.entity_id)
-                battery_devices[state.entity_id] = device_name
+        for device_key, device_data in all_devices.items():
+            # Create a descriptive display name
+            display_name = device_data["name"]
+            if device_data.get("area"):
+                display_name = f"{device_data['name']} ({device_data['area']})"
+            
+            battery_devices[device_key] = display_name
+        
         return battery_devices
 
     async def async_step_exclude_devices(
@@ -157,13 +142,24 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     def _get_battery_devices(self) -> dict[str, str]:
-        """Get all devices with battery level attribute."""
+        """Get all devices with battery level attribute.
+        
+        Returns a dictionary where:
+        - Key: device_id or entity_id (unique identifier)
+        - Value: display name with area (if available)
+        """
+        all_devices = get_all_battery_devices(self.hass)
+        
+        # Create display dict for the multi-select
         battery_devices = {}
-        for state in self.hass.states.async_all():
-            if _is_battery_device(state):
-                # Use friendly_name if available, otherwise entity_id
-                device_name = state.attributes.get("friendly_name", state.entity_id)
-                battery_devices[state.entity_id] = device_name
+        for device_key, device_data in all_devices.items():
+            # Create a descriptive display name
+            display_name = device_data["name"]
+            if device_data.get("area"):
+                display_name = f"{device_data['name']} ({device_data['area']})"
+            
+            battery_devices[device_key] = display_name
+        
         return battery_devices
 
     async def async_step_init(
