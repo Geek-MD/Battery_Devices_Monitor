@@ -19,6 +19,7 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 - 🔋 Automatically discovers all devices with battery levels
 - 🎯 Smart deduplication: each device appears only once, even if it has multiple battery entities
 - 📱 Uses proper device names from Home Assistant's device registry
+- 📍 Area information: device names include their assigned area for easier identification
 - ⚙️ Configurable battery threshold via UI
 - 🚫 Exclude specific devices from monitoring
 - 📊 Single sensor showing overall battery status ("OK" or "Problem")
@@ -51,7 +52,7 @@ This integration can be installed through HACS:
 The integration can be configured through the Home Assistant UI:
 
 - **Battery Threshold**: The battery level (1-100%) below which a device is considered to have a problem. Default is 20%.
-- **Excluded Devices**: Select one or more devices to exclude from monitoring. These can be configured in the integration options after initial setup.
+- **Excluded Devices**: Select one or more devices to exclude from monitoring. Devices are displayed with their assigned area (if any) in the format "Device Name (Area)" for easier identification. These can be configured in the integration options after initial setup.
 
 ## Usage
 
@@ -62,22 +63,22 @@ After installation and configuration, the integration creates a sensor named `se
 - **Problem**: One or more devices have battery levels below the threshold
 
 ### Attributes
-- `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name) and `battery_level` (percentage)
-- `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name) and `battery_level` (percentage)
+- `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name with area) and `battery_level` (percentage)
+- `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name with area) and `battery_level` (percentage)
 - `total_devices`: Total count of monitored devices
 
-**Note**: The integration uses device names from the device registry instead of battery entity names, and automatically deduplicates entries when a device has multiple battery entities.
+**Note**: The integration uses device names from the device registry instead of battery entity names, and automatically deduplicates entries when a device has multiple battery entities. When a device is assigned to an area in Home Assistant, the device name will be displayed in the format "Device Name (Area)" for easier identification.
 
 **Example attribute structure:**
 ```json
 {
   "devices_below_threshold": [
-    {"name": "Sensor Kitchen", "battery_level": 15},
-    {"name": "Remote Living Room", "battery_level": 18}
+    {"name": "Temperature Sensor (Kitchen)", "battery_level": 15},
+    {"name": "Remote Control (Living Room)", "battery_level": 18}
   ],
   "devices_above_threshold": [
-    {"name": "Sensor Bedroom", "battery_level": 85},
-    {"name": "Motion Detector", "battery_level": 92}
+    {"name": "Motion Sensor (Bedroom)", "battery_level": 85},
+    {"name": "Door Sensor (Hallway)", "battery_level": 92}
   ],
   "total_devices": 4
 }
