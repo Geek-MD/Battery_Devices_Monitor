@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-02-04
+
+### Fixed
+- Duplicate device entries: devices with battery entities are now properly deduplicated using device registry
+- Device names: now using device name from device registry instead of battery entity's friendly name
+- Multiple battery entities per device: when a device has multiple battery entities, the highest battery level is used
+
+### Changed
+- Integration now uses Home Assistant's device and entity registries to properly associate battery entities with their parent devices
+- Device deduplication logic ensures each physical device is only listed once in the monitoring list
+
 ## [1.2.0] - 2026-02-04
 
 ### Added
