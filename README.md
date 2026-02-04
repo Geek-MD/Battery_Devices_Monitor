@@ -63,22 +63,26 @@ After installation and configuration, the integration creates a sensor named `se
 - **Problem**: One or more devices have battery levels below the threshold
 
 ### Attributes
-- `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name with area) and `battery_level` (percentage)
-- `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name with area) and `battery_level` (percentage)
+- `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
+- `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
+- `excluded_devices`: List of excluded devices. Each entry contains `name` (device name) and `area` (area name or empty string)
 - `total_devices`: Total count of monitored devices
 
-**Note**: The integration uses device names from the device registry instead of battery entity names, and automatically deduplicates entries when a device has multiple battery entities. When a device is assigned to an area in Home Assistant, the device name will be displayed in the format "Device Name (Area)" for easier identification.
+**Note**: The integration uses device names from the device registry instead of battery entity names, and automatically deduplicates entries when a device has multiple battery entities. Device names and areas are provided as separate fields for easier programmatic access.
 
 **Example attribute structure:**
 ```json
 {
   "devices_below_threshold": [
-    {"name": "Temperature Sensor (Kitchen)", "battery_level": 15},
-    {"name": "Remote Control (Living Room)", "battery_level": 18}
+    {"name": "Temperature Sensor", "area": "Kitchen", "battery_level": 15},
+    {"name": "Remote Control", "area": "Living Room", "battery_level": 18}
   ],
   "devices_above_threshold": [
-    {"name": "Motion Sensor (Bedroom)", "battery_level": 85},
-    {"name": "Door Sensor (Hallway)", "battery_level": 92}
+    {"name": "Motion Sensor", "area": "Bedroom", "battery_level": 85},
+    {"name": "Door Sensor", "area": "Hallway", "battery_level": 92}
+  ],
+  "excluded_devices": [
+    {"name": "Smart Lock", "area": "Front Door"}
   ],
   "total_devices": 4
 }
