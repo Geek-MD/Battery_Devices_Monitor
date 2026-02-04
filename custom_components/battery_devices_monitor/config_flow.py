@@ -23,6 +23,32 @@ if TYPE_CHECKING:
     from homeassistant.data_entry_flow import FlowResult
 
 
+def _is_battery_device(state: Any) -> bool:
+    """Check if a state object represents a battery device.
+    
+    Uses both attribute checking and heuristic to identify battery devices.
+    Returns True if the entity has battery attributes or if it has 'battery'
+    in its entity_id and a valid numeric state in the range 0-100.
+    """
+    # Check for any battery attribute
+    has_battery = False
+    for attr_name in BATTERY_ATTRS:
+        if state.attributes.get(attr_name) is not None:
+            has_battery = True
+            break
+    
+    # Heuristic: Also check if entity_id contains "battery"
+    if not has_battery and "battery" in state.entity_id.lower():
+        # Verify the state is a valid battery level (0-100)
+        try:
+            level = float(state.state)
+            has_battery = 0 <= level <= 100
+        except (ValueError, TypeError):
+            pass
+    
+    return has_battery
+
+
 class BatteryDevicesMonitorConfigFlow(
     config_entries.ConfigFlow, domain=DOMAIN  # type: ignore[call-arg]
 ):
@@ -70,14 +96,7 @@ class BatteryDevicesMonitorConfigFlow(
         """Get all devices with battery level attribute."""
         battery_devices = {}
         for state in self.hass.states.async_all():
-            # Check for any battery attribute
-            has_battery = False
-            for attr_name in BATTERY_ATTRS:
-                if state.attributes.get(attr_name) is not None:
-                    has_battery = True
-                    break
-            
-            if has_battery:
+            if _is_battery_device(state):
                 # Use friendly_name if available, otherwise entity_id
                 device_name = state.attributes.get("friendly_name", state.entity_id)
                 battery_devices[state.entity_id] = device_name
@@ -140,14 +159,7 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         """Get all devices with battery level attribute."""
         battery_devices = {}
         for state in self.hass.states.async_all():
-            # Check for any battery attribute
-            has_battery = False
-            for attr_name in BATTERY_ATTRS:
-                if state.attributes.get(attr_name) is not None:
-                    has_battery = True
-                    break
-            
-            if has_battery:
+            if _is_battery_device(state):
                 # Use friendly_name if available, otherwise entity_id
                 device_name = state.attributes.get("friendly_name", state.entity_id)
                 battery_devices[state.entity_id] = device_name

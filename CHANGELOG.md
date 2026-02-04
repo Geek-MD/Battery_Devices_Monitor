@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-04
+
+### Added
+- Heuristic method to identify battery-powered devices by entity ID
+- Support for battery entities that have "battery" in their entity_id (case-insensitive)
+- Battery level validation (0-100 range) for heuristically detected devices
+- Helper function `_is_battery_device()` in config_flow to reduce code duplication
+
+### Changed
+- Enhanced device discovery to detect entities like `sensor.device_battery` where the state represents the battery level
+- Improved config flow to include heuristically detected battery devices in device selection
+
+### Fixed
+- Missing battery devices that don't have battery attributes but have "battery" in their entity_id
+
 ## [1.1.0] - 2026-02-03
 
 ### Added

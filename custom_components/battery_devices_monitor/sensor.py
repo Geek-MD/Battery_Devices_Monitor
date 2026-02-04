@@ -124,6 +124,14 @@ class BatteryMonitorSensor(SensorEntity):
                 except (ValueError, TypeError):
                     continue
         return None
+    
+    def _is_battery_entity(self, entity_id: str) -> bool:
+        """Check if entity ID suggests it's a battery-related entity.
+        
+        Uses heuristic to identify battery entities by checking if
+        'battery' appears in the entity ID (case-insensitive).
+        """
+        return "battery" in entity_id.lower()
 
     async def async_update(self) -> None:
         """Update the sensor state."""
@@ -146,6 +154,17 @@ class BatteryMonitorSensor(SensorEntity):
 
             # Check if entity has any battery attribute
             battery_level = self._get_battery_level(state.attributes)
+            
+            # Heuristic: If entity_id contains "battery" and we haven't found
+            # a battery level yet, try to use the state value
+            if battery_level is None and self._is_battery_entity(state.entity_id):
+                try:
+                    potential_level = float(state.state)
+                    # Validate range - battery levels should be between 0 and 100
+                    if 0 <= potential_level <= 100:
+                        battery_level = potential_level
+                except (ValueError, TypeError):
+                    battery_level = None
 
             if battery_level is not None:
                 # Use friendly_name if available, otherwise use entity_id
