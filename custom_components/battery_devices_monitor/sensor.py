@@ -139,7 +139,7 @@ class BatteryMonitorSensor(SensorEntity):
                 display_name = device_data["name"]
                 if device_data.get("area"):
                     display_name = f"{device_data['name']} ({device_data['area']})"
-                
+
                 excluded_devices_info.append({
                     "name": display_name,
                     "area": device_data.get("area", ""),
