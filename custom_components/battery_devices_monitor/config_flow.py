@@ -77,6 +77,15 @@ class BatteryDevicesMonitorConfigFlow(
                     has_battery = True
                     break
             
+            # Heuristic: Also check if entity_id contains "battery"
+            if not has_battery and "battery" in state.entity_id.lower():
+                # Verify the state is a valid number (battery level)
+                try:
+                    float(state.state)
+                    has_battery = True
+                except (ValueError, TypeError):
+                    pass
+            
             if has_battery:
                 # Use friendly_name if available, otherwise entity_id
                 device_name = state.attributes.get("friendly_name", state.entity_id)
@@ -146,6 +155,15 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
                 if state.attributes.get(attr_name) is not None:
                     has_battery = True
                     break
+            
+            # Heuristic: Also check if entity_id contains "battery"
+            if not has_battery and "battery" in state.entity_id.lower():
+                # Verify the state is a valid number (battery level)
+                try:
+                    float(state.state)
+                    has_battery = True
+                except (ValueError, TypeError):
+                    pass
             
             if has_battery:
                 # Use friendly_name if available, otherwise entity_id
