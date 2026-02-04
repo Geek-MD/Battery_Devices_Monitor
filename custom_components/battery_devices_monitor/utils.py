@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
 from .const import BATTERY_ATTRS
 
@@ -63,7 +63,7 @@ def get_device_info(
     """
     entity_reg = er.async_get(hass)
     device_reg = dr.async_get(hass)
-    area_reg = hass.data.get("area_registry")
+    area_reg = ar.async_get(hass)
 
     device_name = None
     device_id = None
@@ -79,7 +79,7 @@ def get_device_info(
             device_name = device_entry.name_by_user or device_entry.name
 
             # Get area name if device is assigned to an area
-            if device_entry.area_id and area_reg:
+            if device_entry.area_id:
                 area_entry = area_reg.async_get_area(device_entry.area_id)
                 if area_entry:
                     area_name = area_entry.name

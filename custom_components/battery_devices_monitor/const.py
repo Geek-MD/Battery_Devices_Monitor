@@ -23,6 +23,7 @@ BATTERY_ATTRS: Final[list[str]] = [
 ATTR_DEVICES_ABOVE_THRESHOLD: Final = "devices_above_threshold"
 ATTR_DEVICES_BELOW_THRESHOLD: Final = "devices_below_threshold"
 ATTR_TOTAL_DEVICES: Final = "total_devices"
+ATTR_EXCLUDED_DEVICES: Final = "excluded_devices"
 
 # Sensor states
 STATE_OK: Final = "OK"

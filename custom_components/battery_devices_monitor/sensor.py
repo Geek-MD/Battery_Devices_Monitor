@@ -12,6 +12,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from .const import (
     ATTR_DEVICES_ABOVE_THRESHOLD,
     ATTR_DEVICES_BELOW_THRESHOLD,
+    ATTR_EXCLUDED_DEVICES,
     ATTR_TOTAL_DEVICES,
     CONF_BATTERY_THRESHOLD,
     CONF_EXCLUDED_DEVICES,
@@ -56,6 +57,7 @@ class BatteryMonitorSensor(SensorEntity):
         self._devices_below_threshold: list[dict[str, Any]] = []
         self._devices_above_threshold: list[dict[str, Any]] = []
         self._total_devices = 0
+        self._excluded_devices: list[dict[str, str]] = []
         self._previous_low_devices: set[str] = set()
 
         # Device info to allow area assignment
@@ -78,6 +80,7 @@ class BatteryMonitorSensor(SensorEntity):
             ATTR_DEVICES_BELOW_THRESHOLD: self._devices_below_threshold,
             ATTR_DEVICES_ABOVE_THRESHOLD: self._devices_above_threshold,
             ATTR_TOTAL_DEVICES: self._total_devices,
+            ATTR_EXCLUDED_DEVICES: self._excluded_devices,
         }
 
     @property
@@ -123,14 +126,24 @@ class BatteryMonitorSensor(SensorEntity):
         devices_below_threshold = []
         devices_above_threshold = []
         devices_below_info = {}
+        excluded_devices_info = []
 
         # Get all battery devices using shared utility
         all_devices = get_all_battery_devices(self.hass)
 
         # Filter out excluded devices and categorize by threshold
         for device_key, device_data in all_devices.items():
-            # Skip excluded devices
+            # Check if device is excluded
             if device_key in excluded_devices:
+                # Create display info for excluded devices
+                display_name = device_data["name"]
+                if device_data.get("area"):
+                    display_name = f"{device_data['name']} ({device_data['area']})"
+                
+                excluded_devices_info.append({
+                    "name": display_name,
+                    "area": device_data.get("area", ""),
+                })
                 continue
 
             # Create display info with name, area, and battery level
@@ -159,6 +172,9 @@ class BatteryMonitorSensor(SensorEntity):
         )
         self._devices_above_threshold = sorted(
             devices_above_threshold, key=lambda x: x["name"]
+        )
+        self._excluded_devices = sorted(
+            excluded_devices_info, key=lambda x: x["name"]
         )
         self._total_devices = len(devices_below_threshold) + len(
             devices_above_threshold
