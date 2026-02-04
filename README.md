@@ -17,6 +17,8 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 ## Features
 
 - 🔋 Automatically discovers all devices with battery levels
+- 🎯 Smart deduplication: each device appears only once, even if it has multiple battery entities
+- 📱 Uses proper device names from Home Assistant's device registry
 - ⚙️ Configurable battery threshold via UI
 - 🚫 Exclude specific devices from monitoring
 - 📊 Single sensor showing overall battery status ("OK" or "Problem")
@@ -60,9 +62,11 @@ After installation and configuration, the integration creates a sensor named `se
 - **Problem**: One or more devices have battery levels below the threshold
 
 ### Attributes
-- `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (friendly name) and `battery_level` (percentage)
-- `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (friendly name) and `battery_level` (percentage)
+- `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name) and `battery_level` (percentage)
+- `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name) and `battery_level` (percentage)
 - `total_devices`: Total count of monitored devices
+
+**Note**: The integration uses device names from the device registry instead of battery entity names, and automatically deduplicates entries when a device has multiple battery entities.
 
 **Example attribute structure:**
 ```json
@@ -133,7 +137,7 @@ Example event data:
 
 ## Development
 
-This integration monitors all entities in Home Assistant that have a `battery_level` attribute. It automatically updates when any device battery level changes.
+This integration monitors all entities in Home Assistant that have a `battery_level` attribute or have "battery" in their entity ID. It uses the Home Assistant device and entity registries to properly associate battery entities with their parent devices, ensuring each device appears only once in the list. The integration automatically updates when any device battery level changes.
 
 ### Code Quality
 

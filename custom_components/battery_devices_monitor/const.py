@@ -1,4 +1,5 @@
 """Constants for the Battery Devices Monitor integration."""
+
 from typing import Final
 
 DOMAIN: Final = "battery_devices_monitor"
@@ -14,8 +15,8 @@ DEFAULT_EXCLUDED_DEVICES: Final[list[str]] = []
 # Battery attribute names to check (in order of preference)
 BATTERY_ATTRS: Final[list[str]] = [
     "battery_level",  # Home Assistant standard
-    "battery",        # Common in Zigbee devices
-    "Battery",        # Some integrations use capitalized
+    "battery",  # Common in Zigbee devices
+    "Battery",  # Some integrations use capitalized
 ]
 
 # Sensor attributes
