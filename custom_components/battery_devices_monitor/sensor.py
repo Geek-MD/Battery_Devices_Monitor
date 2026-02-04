@@ -153,6 +153,7 @@ class BatteryMonitorSensor(SensorEntity):
 
             device_info = {
                 "name": display_name,
+                "area": device_data.get("area", ""),
                 "battery_level": device_data["battery_level"],
             }
 

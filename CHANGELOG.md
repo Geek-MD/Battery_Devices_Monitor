@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-02-04
+
+### Added
+- `excluded_devices` sensor attribute that lists excluded devices with their names and areas
+- `area` field added to all device list attributes for consistency
+
+### Changed
+- Device attribute structure now consistently includes `area` field across all lists
+- `devices_below_threshold` entries now include: `name`, `area`, and `battery_level`
+- `devices_above_threshold` entries now include: `name`, `area`, and `battery_level`
+- `excluded_devices` entries include: `name` and `area`
+
+### Fixed
+- Error 500 when reconfiguring integration due to incorrect area registry access
+
 ## [1.4.0] - 2026-02-04
 
 ### Fixed
