@@ -136,29 +136,25 @@ class BatteryMonitorSensor(SensorEntity):
             # Check if device is excluded
             if device_key in excluded_devices:
                 # Create display info for excluded devices
-                display_name = device_data["name"]
-                if device_data.get("area"):
-                    display_name = f"{device_data['name']} ({device_data['area']})"
-
                 excluded_devices_info.append({
-                    "name": display_name,
+                    "name": device_data["name"],
                     "area": device_data.get("area", ""),
                 })
                 continue
 
             # Create display info with name, area, and battery level
-            display_name = device_data["name"]
-            if device_data.get("area"):
-                display_name = f"{device_data['name']} ({device_data['area']})"
-
             device_info = {
-                "name": display_name,
+                "name": device_data["name"],
                 "area": device_data.get("area", ""),
                 "battery_level": device_data["battery_level"],
             }
 
             if device_data["battery_level"] < threshold:
                 devices_below_threshold.append(device_info)
+                # For event firing, use display name with area
+                display_name = device_data["name"]
+                if device_data.get("area"):
+                    display_name = f"{device_data['name']} ({device_data['area']})"
                 devices_below_info[device_data["entity_id"]] = {
                     "name": display_name,
                     "battery_level": device_data["battery_level"],
