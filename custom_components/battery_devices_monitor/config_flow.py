@@ -113,6 +113,9 @@ class BatteryDevicesMonitorConfigFlow(
             )
 
         # Get battery devices before creating schema to handle any errors
+        # We catch all exceptions here because we want the config flow to be resilient
+        # even if Home Assistant is in an unexpected state. The empty dict allows
+        # configuration to proceed, and the error is logged for debugging.
         try:
             battery_devices = self._get_battery_devices()
         except Exception as err:
@@ -180,6 +183,9 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         # Get battery devices before creating schema to handle any errors
+        # We catch all exceptions here because we want the options flow to be resilient
+        # even if Home Assistant is in an unexpected state. The empty dict allows
+        # reconfiguration to proceed, and the error is logged for debugging.
         try:
             battery_devices = self._get_battery_devices()
         except Exception as err:
