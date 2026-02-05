@@ -86,7 +86,10 @@ class BatteryDevicesMonitorConfigFlow(
             
             battery_devices[device_key] = display_name
         
-        return battery_devices
+        # Sort by display name (friendly name) alphabetically
+        sorted_devices = dict(sorted(battery_devices.items(), key=lambda x: x[1].lower()))
+        
+        return sorted_devices
 
     async def async_step_exclude_devices(
         self, user_input: dict[str, Any] | None = None
@@ -160,7 +163,10 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
             
             battery_devices[device_key] = display_name
         
-        return battery_devices
+        # Sort by display name (friendly name) alphabetically
+        sorted_devices = dict(sorted(battery_devices.items(), key=lambda x: x[1].lower()))
+        
+        return sorted_devices
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
