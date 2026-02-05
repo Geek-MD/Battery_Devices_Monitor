@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.6.0] - 2026-02-05
+## [1.5.1] - 2026-02-05
 
 ### Changed
 - Excluded devices list in configuration flow is now sorted alphabetically by friendly name
