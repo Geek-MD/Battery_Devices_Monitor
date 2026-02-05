@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -22,6 +23,7 @@ from .utils import get_all_battery_devices
 if TYPE_CHECKING:
     from homeassistant.data_entry_flow import FlowResult
 
+_LOGGER = logging.getLogger(__name__)
 
 class BatteryDevicesMonitorConfigFlow(
     config_entries.ConfigFlow,
@@ -110,7 +112,13 @@ class BatteryDevicesMonitorConfigFlow(
                 options=config_data,
             )
 
-        battery_devices = self._get_battery_devices()
+        # Get battery devices before creating schema to handle any errors
+        try:
+            battery_devices = self._get_battery_devices()
+        except Exception as err:
+            # If we can't get devices, log error and use empty dict to allow configuration
+            _LOGGER.error("Error getting battery devices in config flow: %s", err)
+            battery_devices = {}
 
         data_schema = vol.Schema(
             {
@@ -171,7 +179,13 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        battery_devices = self._get_battery_devices()
+        # Get battery devices before creating schema to handle any errors
+        try:
+            battery_devices = self._get_battery_devices()
+        except Exception as err:
+            # If we can't get devices, log error and use empty dict to allow configuration
+            _LOGGER.error("Error getting battery devices in options flow: %s", err)
+            battery_devices = {}
 
         return self.async_show_form(
             step_id="init",

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-02-05
+
+### Fixed
+- Error 500 when reconfiguring integration by adding proper error handling in config and options flows
+- Added logging to help diagnose issues when getting battery devices during configuration
+
 ## [1.5.1] - 2026-02-05
 
 ### Changed
