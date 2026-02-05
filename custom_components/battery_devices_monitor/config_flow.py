@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -22,6 +23,7 @@ from .utils import get_all_battery_devices
 if TYPE_CHECKING:
     from homeassistant.data_entry_flow import FlowResult
 
+_LOGGER = logging.getLogger(__name__)
 
 class BatteryDevicesMonitorConfigFlow(
     config_entries.ConfigFlow,
@@ -86,7 +88,8 @@ class BatteryDevicesMonitorConfigFlow(
             
             battery_devices[device_key] = display_name
         
-        return battery_devices
+        # Sort by display name (friendly name) alphabetically
+        return dict(sorted(battery_devices.items(), key=lambda x: x[1].lower()))
 
     async def async_step_exclude_devices(
         self, user_input: dict[str, Any] | None = None
@@ -109,7 +112,16 @@ class BatteryDevicesMonitorConfigFlow(
                 options=config_data,
             )
 
-        battery_devices = self._get_battery_devices()
+        # Get battery devices before creating schema to handle any errors
+        # We catch all exceptions here because we want the config flow to be resilient
+        # even if Home Assistant is in an unexpected state. The empty dict allows
+        # configuration to proceed, and the error is logged for debugging.
+        try:
+            battery_devices = self._get_battery_devices()
+        except Exception as err:
+            # If we can't get devices, log error and use empty dict to allow configuration
+            _LOGGER.error("Error getting battery devices in config flow: %s", err)
+            battery_devices = {}
 
         data_schema = vol.Schema(
             {
@@ -160,7 +172,8 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
             
             battery_devices[device_key] = display_name
         
-        return battery_devices
+        # Sort by display name (friendly name) alphabetically
+        return dict(sorted(battery_devices.items(), key=lambda x: x[1].lower()))
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -169,7 +182,16 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        battery_devices = self._get_battery_devices()
+        # Get battery devices before creating schema to handle any errors
+        # We catch all exceptions here because we want the options flow to be resilient
+        # even if Home Assistant is in an unexpected state. The empty dict allows
+        # reconfiguration to proceed, and the error is logged for debugging.
+        try:
+            battery_devices = self._get_battery_devices()
+        except Exception as err:
+            # If we can't get devices, log error and use empty dict to allow configuration
+            _LOGGER.error("Error getting battery devices in options flow: %s", err)
+            battery_devices = {}
 
         return self.async_show_form(
             step_id="init",
