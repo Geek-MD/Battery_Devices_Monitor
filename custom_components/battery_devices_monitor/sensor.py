@@ -80,6 +80,7 @@ class BatteryMonitorSensor(SensorEntity):
             ATTR_DEVICES_BELOW_THRESHOLD: self._devices_below_threshold,
             ATTR_DEVICES_ABOVE_THRESHOLD: self._devices_above_threshold,
             ATTR_TOTAL_DEVICES: self._total_devices,
+            "total_devices": self._total_devices,  # Backwards compatibility
             ATTR_EXCLUDED_DEVICES: self._excluded_devices,
         }
 
