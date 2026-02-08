@@ -66,7 +66,7 @@ After installation and configuration, the integration creates a sensor named `se
 - `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
 - `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
 - `excluded_devices`: List of excluded devices. Each entry contains `name` (device name) and `area` (area name or empty string)
-- `total_devices`: Total count of monitored devices
+- `total_monitored_devices`: Total count of monitored devices
 
 **Note**: The integration uses device names from the device registry instead of battery entity names, and automatically deduplicates entries when a device has multiple battery entities. Device names and areas are provided as separate fields for easier programmatic access.
 
@@ -84,7 +84,7 @@ After installation and configuration, the integration creates a sensor named `se
   "excluded_devices": [
     {"name": "Smart Lock", "area": "Front Door"}
   ],
-  "total_devices": 4
+  "total_monitored_devices": 4
 }
 ```
 

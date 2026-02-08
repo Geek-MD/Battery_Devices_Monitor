@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-02-08
+
+### Changed
+- Sensor attribute `total_devices` renamed to `total_monitored_devices` for clarity
+- `excluded_devices` list is now sorted alphabetically by friendly name (A-Z), then by area (A-Z)
+- `devices_above_threshold` and `devices_below_threshold` lists are now sorted by battery_level (ascending), then by friendly name (A-Z), then by area (A-Z)
+- Device selection list in configuration flow (step 2) is now sorted by friendly name (A-Z), then by area (A-Z)
+
 ## [1.5.0] - 2026-02-04
 
 ### Added
