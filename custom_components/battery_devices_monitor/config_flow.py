@@ -76,9 +76,17 @@ class BatteryDevicesMonitorConfigFlow(
         """
         all_devices = get_all_battery_devices(self.hass)
         
+        # Create list of tuples (device_key, device_data) for sorting
+        device_list = []
+        for device_key, device_data in all_devices.items():
+            device_list.append((device_key, device_data))
+        
+        # Sort by name (A-Z), then by area (A-Z)
+        device_list.sort(key=lambda x: (x[1]["name"], x[1].get("area", "")))
+        
         # Create display dict for the multi-select
         battery_devices = {}
-        for device_key, device_data in all_devices.items():
+        for device_key, device_data in device_list:
             # Create a descriptive display name
             display_name = device_data["name"]
             if device_data.get("area"):
@@ -150,9 +158,17 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         """
         all_devices = get_all_battery_devices(self.hass)
         
+        # Create list of tuples (device_key, device_data) for sorting
+        device_list = []
+        for device_key, device_data in all_devices.items():
+            device_list.append((device_key, device_data))
+        
+        # Sort by name (A-Z), then by area (A-Z)
+        device_list.sort(key=lambda x: (x[1]["name"], x[1].get("area", "")))
+        
         # Create display dict for the multi-select
         battery_devices = {}
-        for device_key, device_data in all_devices.items():
+        for device_key, device_data in device_list:
             # Create a descriptive display name
             display_name = device_data["name"]
             if device_data.get("area"):
