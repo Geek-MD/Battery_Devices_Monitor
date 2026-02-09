@@ -82,7 +82,7 @@ class BatteryDevicesMonitorConfigFlow(
             device_list.append((device_key, device_data))
         
         # Sort by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
-        device_list.sort(key=lambda x: (x[1]["name"].lower(), x[1].get("area", "").lower()))
+        device_list.sort(key=lambda x: (x[1]["name"].lower(), (x[1].get("area", "") or "").lower()))
         
         # Create display dict for the multi-select
         battery_devices = {}
@@ -164,7 +164,7 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
             device_list.append((device_key, device_data))
         
         # Sort by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
-        device_list.sort(key=lambda x: (x[1]["name"].lower(), x[1].get("area", "").lower()))
+        device_list.sort(key=lambda x: (x[1]["name"].lower(), (x[1].get("area", "") or "").lower()))
         
         # Create display dict for the multi-select
         battery_devices = {}
