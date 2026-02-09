@@ -165,15 +165,15 @@ class BatteryMonitorSensor(SensorEntity):
 
         # Sort devices_below_threshold: first by battery_level (ascending), then by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
         self._devices_below_threshold = sorted(
-            devices_below_threshold, key=lambda x: (x["battery_level"], x["name"].lower(), x["area"].lower())
+            devices_below_threshold, key=lambda x: (x["battery_level"], x["name"].lower(), (x["area"] or "").lower())
         )
         # Sort devices_above_threshold: first by battery_level (ascending), then by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
         self._devices_above_threshold = sorted(
-            devices_above_threshold, key=lambda x: (x["battery_level"], x["name"].lower(), x["area"].lower())
+            devices_above_threshold, key=lambda x: (x["battery_level"], x["name"].lower(), (x["area"] or "").lower())
         )
         # Sort excluded_devices: first by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
         self._excluded_devices = sorted(
-            excluded_devices_info, key=lambda x: (x["name"].lower(), x["area"].lower())
+            excluded_devices_info, key=lambda x: (x["name"].lower(), (x["area"] or "").lower())
         )
         self._total_devices = len(devices_below_threshold) + len(
             devices_above_threshold
