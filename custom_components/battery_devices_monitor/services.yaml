@@ -1,6 +1,7 @@
 get_low_battery_devices:
   name: Get Low Battery Devices
   description: Returns a formatted list of devices below the battery threshold.
+  target:
   fields:
     entity_id:
       name: Entity ID
@@ -11,11 +12,3 @@ get_low_battery_devices:
         entity:
           integration: battery_devices_monitor
           domain: sensor
-  response:
-    type: dict
-    description: Formatted list of low battery devices
-    fields:
-      result:
-        type: string
-        description: "Multi-line string with one device per line in format: 'name (area) - battery_level%'. Use this in automations with response_variable to access the formatted list."
-        example: "Temperature Sensor (Kitchen) - 16%\nRemote Control (Living Room) - 18%"
