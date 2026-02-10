@@ -51,6 +51,12 @@
           "name": "Entity ID",
           "description": "The entity ID of the battery monitor sensor."
         }
+      },
+      "response": {
+        "result": {
+          "name": "Formatted Device List",
+          "description": "Multi-line string with one device per line in format: 'name (area) - battery_level%'. Use this in automations with response_variable to access the formatted list."
+        }
       }
     }
   }

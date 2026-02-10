@@ -12,4 +12,10 @@ get_low_battery_devices:
           integration: battery_devices_monitor
           domain: sensor
   response:
-    type: string
+    type: dict
+    description: Formatted list of low battery devices
+    fields:
+      result:
+        type: string
+        description: "Multi-line string with one device per line in format: 'name (area) - battery_level%'. Use this in automations with response_variable to access the formatted list."
+        example: "Temperature Sensor (Kitchen) - 16%\nRemote Control (Living Room) - 18%"

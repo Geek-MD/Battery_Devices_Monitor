@@ -132,7 +132,13 @@ Returns a formatted list of devices below the battery threshold. This service ca
 - `entity_id` (required): The entity ID of the battery monitor sensor (e.g., `sensor.battery_monitor_status`)
 
 **Returns:**
-A formatted string with one device per line in the format: `name (area) - battery_level%`
+A dictionary with a `result` field containing a formatted string with one device per line in the format: `name (area) - battery_level%`
+
+**Response Variable:**
+- **Name**: `result`
+- **Type**: String (multi-line)
+- **Description**: Formatted list with one device per line. Each line follows the format: "name (area) - battery_level%" where battery_level is an integer.
+- **Usage**: Access it in your automation using `{{ response_variable_name.result }}`
 
 **Example Service Call:**
 ```yaml
@@ -142,7 +148,7 @@ data:
 response_variable: low_battery_list
 ```
 
-**Example Output:**
+**Example Output (accessed as `low_battery_list.result`):**
 ```
 Temperature Sensor (Kitchen) - 15%
 Remote Control (Living Room) - 18%
@@ -166,6 +172,27 @@ automation:
         data:
           title: "Low Battery Devices"
           message: "{{ battery_report.result }}"
+```
+
+**Advanced Example - Using in Scripts with Conditions:**
+```yaml
+script:
+  check_batteries:
+    sequence:
+      - service: battery_devices_monitor.get_low_battery_devices
+        data:
+          entity_id: sensor.battery_monitor_status
+        response_variable: battery_list
+      - if:
+          - condition: template
+            value_template: "{{ battery_list.result != '' }}"
+        then:
+          - service: persistent_notification.create
+            data:
+              title: "Battery Alert"
+              message: |
+                The following devices need new batteries:
+                {{ battery_list.result }}
 ```
 
 ## Events

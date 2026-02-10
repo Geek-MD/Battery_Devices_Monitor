@@ -41,6 +41,12 @@
           "name": "ID de Entidad",
           "description": "El ID de entidad del sensor de monitor de batería."
         }
+      },
+      "response": {
+        "result": {
+          "name": "Lista de Dispositivos Formateada",
+          "description": "Cadena multilínea con un dispositivo por línea en formato: 'nombre (área) - nivel_batería%'. Use esto en automatizaciones con response_variable para acceder a la lista formateada."
+        }
       }
     }
   }
