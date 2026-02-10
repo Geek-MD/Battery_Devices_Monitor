@@ -31,5 +31,17 @@
         }
       }
     }
+  },
+  "services": {
+    "get_low_battery_devices": {
+      "name": "Obtener Dispositivos con Batería Baja",
+      "description": "Devuelve una lista formateada de dispositivos por debajo del umbral de batería.",
+      "fields": {
+        "entity_id": {
+          "name": "ID de Entidad",
+          "description": "El ID de entidad del sensor de monitor de batería."
+        }
+      }
+    }
   }
 }

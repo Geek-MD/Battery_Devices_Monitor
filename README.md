@@ -25,6 +25,7 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 - 📊 Single sensor showing overall battery status ("OK" or "Problem")
 - 📝 Detailed attributes showing all monitored devices
 - 🔔 Events fired when devices go below threshold
+- 🛠️ Service to get formatted list of low battery devices
 - 🌐 Multi-language support (English and Spanish)
 
 ## Installation
@@ -119,6 +120,52 @@ automation:
           message: >
             Device {{ trigger.event.data.name }} has low battery 
             ({{ trigger.event.data.battery_level }}%)
+```
+
+## Services
+
+### `battery_devices_monitor.get_low_battery_devices`
+
+Returns a formatted list of devices below the battery threshold. This service can be used in automations to get a human-readable list of low battery devices.
+
+**Service Data:**
+- `entity_id` (required): The entity ID of the battery monitor sensor (e.g., `sensor.battery_monitor_status`)
+
+**Returns:**
+A formatted string with one device per line in the format: `name (area) - battery_level%`
+
+**Example Service Call:**
+```yaml
+service: battery_devices_monitor.get_low_battery_devices
+data:
+  entity_id: sensor.battery_monitor_status
+response_variable: low_battery_list
+```
+
+**Example Output:**
+```
+Temperature Sensor (Kitchen) - 15%
+Remote Control (Living Room) - 18%
+Door Sensor - 12%
+```
+
+**Example Automation Using the Service:**
+```yaml
+automation:
+  - alias: "Send Low Battery Report"
+    trigger:
+      - platform: state
+        entity_id: sensor.battery_monitor_status
+        to: "Problem"
+    action:
+      - service: battery_devices_monitor.get_low_battery_devices
+        data:
+          entity_id: sensor.battery_monitor_status
+        response_variable: battery_report
+      - service: notify.mobile_app
+        data:
+          title: "Low Battery Devices"
+          message: "{{ battery_report.result }}"
 ```
 
 ## Events

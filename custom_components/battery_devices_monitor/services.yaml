@@ -1,0 +1,15 @@
+get_low_battery_devices:
+  name: Get Low Battery Devices
+  description: Returns a formatted list of devices below the battery threshold.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: The entity ID of the battery monitor sensor.
+      required: true
+      example: "sensor.battery_monitor_status"
+      selector:
+        entity:
+          integration: battery_devices_monitor
+          domain: sensor
+  response:
+    type: string

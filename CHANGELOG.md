@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-02-10
+
+### Added
+- New service `get_low_battery_devices` that returns a formatted list of devices below the battery threshold
+- Service output format: "name (area) - battery_level%\n" with rounded battery_level values
+- Service can be used in automations to get device information as an output variable
+
 ## [1.5.4] - 2026-02-09
 
 ### Fixed
