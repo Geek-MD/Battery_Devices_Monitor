@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
+from homeassistant.core import ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN
+from .const import ATTR_DEVICES_BELOW_THRESHOLD, DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -24,6 +26,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    # Register service
+    async def get_low_battery_devices(call: ServiceCall) -> ServiceResponse:
+        """Get formatted list of low battery devices."""
+        entity_id = call.data.get("entity_id")
+        
+        if not entity_id:
+            raise HomeAssistantError("entity_id is required")
+        
+        state = hass.states.get(entity_id)
+        if not state:
+            raise HomeAssistantError(f"Entity {entity_id} not found")
+        
+        devices_below = state.attributes.get(ATTR_DEVICES_BELOW_THRESHOLD, [])
+        
+        # Format output: "name (area) - battery_level%\n"
+        output_lines = []
+        for device in devices_below:
+            name = device.get("name", "Unknown")
+            area = device.get("area", "")
+            battery_level = device.get("battery_level", 0)
+            
+            # Round battery level to integer
+            battery_level_int = round(battery_level)
+            
+            # Format line
+            if area:
+                line = f"{name} ({area}) - {battery_level_int}%"
+            else:
+                line = f"{name} - {battery_level_int}%"
+            
+            output_lines.append(line)
+        
+        # Join with newlines
+        formatted_output = "\n".join(output_lines)
+        
+        return {"result": formatted_output}
+    
+    hass.services.async_register(
+        DOMAIN,
+        "get_low_battery_devices",
+        get_low_battery_devices,
+        supports_response=SupportsResponse.ONLY,
+    )
+
     return True
 
 
@@ -32,6 +78,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
+        # Unregister service when last entry is unloaded
+        if not hass.data[DOMAIN]:
+            hass.services.async_remove(DOMAIN, "get_low_battery_devices")
 
     return unload_ok
 

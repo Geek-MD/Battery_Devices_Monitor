@@ -25,6 +25,7 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 - 📊 Single sensor showing overall battery status ("OK" or "Problem")
 - 📝 Detailed attributes showing all monitored devices
 - 🔔 Events fired when devices go below threshold
+- 🛠️ Service to get formatted list of low battery devices
 - 🌐 Multi-language support (English and Spanish)
 
 ## Installation
@@ -119,6 +120,79 @@ automation:
           message: >
             Device {{ trigger.event.data.name }} has low battery 
             ({{ trigger.event.data.battery_level }}%)
+```
+
+## Services
+
+### `battery_devices_monitor.get_low_battery_devices`
+
+Returns a formatted list of devices below the battery threshold. This service can be used in automations to get a human-readable list of low battery devices.
+
+**Service Data:**
+- `entity_id` (required): The entity ID of the battery monitor sensor (e.g., `sensor.battery_monitor_status`)
+
+**Returns:**
+A dictionary with a `result` field containing a formatted string with one device per line in the format: `name (area) - battery_level%`
+
+**Response Variable:**
+- **Name**: `result`
+- **Type**: String (multi-line)
+- **Description**: Formatted list with one device per line. Each line follows the format: "name (area) - battery_level%" where battery_level is an integer.
+- **Usage**: Access it in your automation using `{{ response_variable_name.result }}`
+
+**Example Service Call:**
+```yaml
+service: battery_devices_monitor.get_low_battery_devices
+data:
+  entity_id: sensor.battery_monitor_status
+response_variable: low_battery_list
+```
+
+**Example Output (accessed as `low_battery_list.result`):**
+```
+Temperature Sensor (Kitchen) - 15%
+Remote Control (Living Room) - 18%
+Door Sensor - 12%
+```
+
+**Example Automation Using the Service:**
+```yaml
+automation:
+  - alias: "Send Low Battery Report"
+    trigger:
+      - platform: state
+        entity_id: sensor.battery_monitor_status
+        to: "Problem"
+    action:
+      - service: battery_devices_monitor.get_low_battery_devices
+        data:
+          entity_id: sensor.battery_monitor_status
+        response_variable: battery_report
+      - service: notify.mobile_app
+        data:
+          title: "Low Battery Devices"
+          message: "{{ battery_report.result }}"
+```
+
+**Advanced Example - Using in Scripts with Conditions:**
+```yaml
+script:
+  check_batteries:
+    sequence:
+      - service: battery_devices_monitor.get_low_battery_devices
+        data:
+          entity_id: sensor.battery_monitor_status
+        response_variable: battery_list
+      - if:
+          - condition: template
+            value_template: "{{ battery_list.result != '' }}"
+        then:
+          - service: persistent_notification.create
+            data:
+              title: "Battery Alert"
+              message: |
+                The following devices need new batteries:
+                {{ battery_list.result }}
 ```
 
 ## Events

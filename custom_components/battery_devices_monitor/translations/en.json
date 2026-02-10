@@ -41,5 +41,17 @@
         }
       }
     }
+  },
+  "services": {
+    "get_low_battery_devices": {
+      "name": "Get Low Battery Devices",
+      "description": "Returns a formatted list of devices below the battery threshold. The service returns a dictionary with a 'result' field containing a multi-line string with one device per line in format: 'name (area) - battery_level%'. Use this in automations with response_variable to access the formatted list.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity ID",
+          "description": "The entity ID of the battery monitor sensor."
+        }
+      }
+    }
   }
 }
