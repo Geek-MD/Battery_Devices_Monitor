@@ -33,5 +33,6 @@ STATE_PROBLEM: Final = "Problem"
 # Sensor name
 SENSOR_NAME: Final = "Battery Monitor Status"
 
-# Event
+# Events
 EVENT_BATTERY_LOW: Final = "battery_devices_monitor_low_battery"
+EVENT_BATTERY_UNAVAILABLE: Final = "battery_devices_monitor_battery_unavailable"

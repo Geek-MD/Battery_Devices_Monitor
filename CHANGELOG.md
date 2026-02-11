@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - New sensor attribute `devices_without_battery_info` that lists devices with battery but whose value cannot be obtained (unavailable, unknown, or invalid)
+- New event `battery_devices_monitor_battery_unavailable` fired when a device's battery value becomes unavailable
+- Event includes `entity_id` and `name` (with area if available) for use in automations
 - Devices without battery info are now included in `total_monitored_devices` count
 - Format follows same structure as excluded_devices: each entry contains `name` and `area` fields
 

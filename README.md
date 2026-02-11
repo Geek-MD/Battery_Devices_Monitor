@@ -67,8 +67,9 @@ After installation and configuration, the integration creates a sensor named `se
 ### Attributes
 - `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
 - `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
+- `devices_without_battery_info`: List of devices with battery but whose value is unavailable. Each entry contains `name` (device name) and `area` (area name or empty string)
 - `excluded_devices`: List of excluded devices. Each entry contains `name` (device name) and `area` (area name or empty string)
-- `total_monitored_devices`: Total count of monitored devices
+- `total_monitored_devices`: Total count of monitored devices (includes devices with available battery info and devices with unavailable battery info)
 
 **Note**: The integration uses device names from the device registry instead of battery entity names, and automatically deduplicates entries when a device has multiple battery entities. Device names and areas are provided as separate fields for easier programmatic access.
 
@@ -83,10 +84,14 @@ After installation and configuration, the integration creates a sensor named `se
     {"name": "Motion Sensor", "area": "Bedroom", "battery_level": 85},
     {"name": "Door Sensor", "area": "Hallway", "battery_level": 92}
   ],
+  "devices_without_battery_info": [
+    {"name": "Window Sensor", "area": "Bedroom"},
+    {"name": "Leak Sensor", "area": "Bathroom"}
+  ],
   "excluded_devices": [
     {"name": "Smart Lock", "area": "Front Door"}
   ],
-  "total_monitored_devices": 4
+  "total_monitored_devices": 6
 }
 ```
 
@@ -198,21 +203,56 @@ script:
 
 ## Events
 
-The integration fires a `battery_devices_monitor_low_battery` event when a device's battery goes below the configured threshold. The event data includes:
+The integration fires the following events:
+
+### `battery_devices_monitor_low_battery`
+
+Fired when a device's battery goes below the configured threshold. The event data includes:
 
 - `entity_id`: The entity ID of the device
-- `name`: The friendly name of the device
+- `name`: The friendly name of the device (with area if available)
 - `battery_level`: The current battery level
 - `threshold`: The configured threshold that was crossed
 
 Example event data:
 ```json
 {
-  "entity_id": "sensor.my_device",
-  "name": "My Device",
+  "entity_id": "sensor.my_device_battery",
+  "name": "My Device (Living Room)",
   "battery_level": 15,
   "threshold": 20
 }
+```
+
+### `battery_devices_monitor_battery_unavailable`
+
+Fired when a device's battery value becomes unavailable (unavailable, unknown, or cannot be read). This is useful for detecting devices that are offline or having communication issues. The event data includes:
+
+- `entity_id`: The entity ID of the device
+- `name`: The friendly name of the device (with area if available)
+
+Example event data:
+```json
+{
+  "entity_id": "sensor.my_device_battery",
+  "name": "My Device (Living Room)"
+}
+```
+
+Example automation using the unavailable battery event:
+```yaml
+automation:
+  - alias: "Notify Battery Unavailable"
+    trigger:
+      - platform: event
+        event_type: battery_devices_monitor_battery_unavailable
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Battery Status Unavailable"
+          message: >
+            Device {{ trigger.event.data.name }} battery status is unavailable.
+            The device might be offline or having communication issues.
 ```
 
 ## Development

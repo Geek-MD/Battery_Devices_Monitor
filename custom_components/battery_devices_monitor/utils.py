@@ -176,7 +176,7 @@ def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dict[str,
 
     Returns a dictionary where:
     - Key: device_id (or entity_id if device_id not available)
-    - Value: dict with 'name' and 'area'
+    - Value: dict with 'name', 'area', and 'entity_id'
     """
     devices_without_info: dict[str, dict[str, str | None]] = {}
 
@@ -195,6 +195,7 @@ def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dict[str,
             devices_without_info[unique_key] = {
                 "name": device_name,
                 "area": area_name,
+                "entity_id": state.entity_id,
             }
 
     return devices_without_info
