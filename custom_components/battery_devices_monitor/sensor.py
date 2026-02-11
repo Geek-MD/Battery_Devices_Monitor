@@ -194,8 +194,9 @@ class BatteryMonitorSensor(SensorEntity):
             excluded_devices_info, key=lambda x: (x["name"].lower(), (x["area"] or "").lower())
         )
         # Sort devices_without_battery_info: first by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
+        # Note: name should never be None (has fallback), but type system requires the check
         self._devices_without_battery_info = sorted(
-            devices_without_info, key=lambda x: (x["name"].lower() if x["name"] else "", (x["area"] or "").lower())
+            devices_without_info, key=lambda x: ((x["name"] or "").lower(), (x["area"] or "").lower())
         )
         # Include devices without battery info in total count
         self._total_devices = len(devices_below_threshold) + len(
