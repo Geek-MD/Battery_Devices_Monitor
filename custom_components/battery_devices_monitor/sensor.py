@@ -12,6 +12,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from .const import (
     ATTR_DEVICES_ABOVE_THRESHOLD,
     ATTR_DEVICES_BELOW_THRESHOLD,
+    ATTR_DEVICES_WITHOUT_BATTERY_INFO,
     ATTR_EXCLUDED_DEVICES,
     ATTR_TOTAL_MONITORED_DEVICES,
     CONF_BATTERY_THRESHOLD,
@@ -20,11 +21,12 @@ from .const import (
     DEFAULT_EXCLUDED_DEVICES,
     DOMAIN,
     EVENT_BATTERY_LOW,
+    EVENT_BATTERY_UNAVAILABLE,
     SENSOR_NAME,
     STATE_OK,
     STATE_PROBLEM,
 )
-from .utils import get_all_battery_devices
+from .utils import get_all_battery_devices, get_devices_without_battery_info
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -56,9 +58,11 @@ class BatteryMonitorSensor(SensorEntity):
         self._state = STATE_OK
         self._devices_below_threshold: list[dict[str, Any]] = []
         self._devices_above_threshold: list[dict[str, Any]] = []
+        self._devices_without_battery_info: list[dict[str, str | None]] = []
         self._total_devices = 0
         self._excluded_devices: list[dict[str, str]] = []
         self._previous_low_devices: set[str] = set()
+        self._previous_unavailable_devices: set[str] = set()
 
         # Device info to allow area assignment
         self._attr_device_info = DeviceInfo(
@@ -81,6 +85,7 @@ class BatteryMonitorSensor(SensorEntity):
             ATTR_DEVICES_ABOVE_THRESHOLD: self._devices_above_threshold,
             ATTR_TOTAL_MONITORED_DEVICES: self._total_devices,
             ATTR_EXCLUDED_DEVICES: self._excluded_devices,
+            ATTR_DEVICES_WITHOUT_BATTERY_INFO: self._devices_without_battery_info,
         }
 
     @property
@@ -127,9 +132,13 @@ class BatteryMonitorSensor(SensorEntity):
         devices_above_threshold = []
         devices_below_info = {}
         excluded_devices_info = []
+        devices_without_info = []
 
         # Get all battery devices using shared utility
         all_devices = get_all_battery_devices(self.hass)
+        
+        # Get devices with battery but unavailable info
+        all_devices_without_info = get_devices_without_battery_info(self.hass)
 
         # Filter out excluded devices and categorize by threshold
         for device_key, device_data in all_devices.items():
@@ -163,6 +172,33 @@ class BatteryMonitorSensor(SensorEntity):
             else:
                 devices_above_threshold.append(device_info)
 
+        # Process devices without battery info (also filter excluded)
+        unavailable_devices_event_data = {}
+        for device_key, device_data in all_devices_without_info.items():
+            # Skip if device is excluded
+            if device_key in excluded_devices:
+                continue
+            
+            # entity_id should always be present
+            entity_id = device_data.get("entity_id")
+            if not entity_id:
+                continue
+            
+            # For display in attributes (without entity_id)
+            devices_without_info.append({
+                "name": device_data["name"],
+                "area": device_data.get("area", ""),
+            })
+            
+            # For event firing, use display name with area
+            display_name = device_data["name"]
+            if device_data.get("area"):
+                display_name = f"{device_data['name']} ({device_data['area']})"
+            unavailable_devices_event_data[entity_id] = {
+                "name": display_name,
+                "entity_id": entity_id,
+            }
+
         # Sort devices_below_threshold: first by battery_level (ascending), then by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
         self._devices_below_threshold = sorted(
             devices_below_threshold, key=lambda x: (x["battery_level"], x["name"].lower(), (x["area"] or "").lower())
@@ -175,9 +211,15 @@ class BatteryMonitorSensor(SensorEntity):
         self._excluded_devices = sorted(
             excluded_devices_info, key=lambda x: (x["name"].lower(), (x["area"] or "").lower())
         )
+        # Sort devices_without_battery_info: first by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
+        # Note: name should never be None (has fallback), but type system requires the check
+        self._devices_without_battery_info = sorted(
+            devices_without_info, key=lambda x: ((x["name"] or "").lower(), (x["area"] or "").lower())
+        )
+        # Include devices without battery info in total count
         self._total_devices = len(devices_below_threshold) + len(
             devices_above_threshold
-        )
+        ) + len(devices_without_info)
 
         # Fire events for newly detected low battery devices
         current_low_devices = set(devices_below_info.keys())
@@ -196,6 +238,22 @@ class BatteryMonitorSensor(SensorEntity):
             )
 
         self._previous_low_devices = current_low_devices
+
+        # Fire events for newly detected unavailable battery devices
+        current_unavailable_devices = set(unavailable_devices_event_data.keys())
+        new_unavailable_devices = current_unavailable_devices - self._previous_unavailable_devices
+
+        for entity_id in new_unavailable_devices:
+            device_info = unavailable_devices_event_data[entity_id]
+            self.hass.bus.async_fire(
+                EVENT_BATTERY_UNAVAILABLE,
+                {
+                    "entity_id": entity_id,
+                    "name": device_info["name"],
+                },
+            )
+
+        self._previous_unavailable_devices = current_unavailable_devices
 
         # Update state based on whether any devices have low battery
         if devices_below_threshold:
