@@ -1,5 +1,3 @@
-# Battery Devices Monitor
-
 [![Geek-MD - Battery Devices Monitor](https://img.shields.io/static/v1?label=Geek-MD&message=Battery%20Devices%20Monitor&color=blue&logo=github)](https://github.com/Geek-MD/Battery_Devices_Monitor)
 [![Stars](https://img.shields.io/github/stars/Geek-MD/Battery_Devices_Monitor?style=social)](https://github.com/Geek-MD/Battery_Devices_Monitor)
 [![Forks](https://img.shields.io/github/forks/Geek-MD/Battery_Devices_Monitor?style=social)](https://github.com/Geek-MD/Battery_Devices_Monitor)
@@ -14,6 +12,7 @@
 
 <img width="200" height="200" alt="image" src="https://github.com/Geek-MD/Battery_Devices_Monitor/blob/main/icon.png?raw=true" />
 
+# Battery Devices Monitor
 A Home Assistant custom integration that monitors all battery-powered devices and provides a single sensor showing "OK" or "Problem" status.
 
 ## Features
