@@ -85,8 +85,8 @@ After installation and configuration, the integration creates a sensor named `se
     {"name": "Door Sensor", "area": "Hallway", "battery_level": 92}
   ],
   "devices_without_battery_info": [
-    {"name": "Window Sensor", "area": "Bedroom"},
-    {"name": "Leak Sensor", "area": "Bathroom"}
+    {"name": "Leak Sensor", "area": "Bathroom"},
+    {"name": "Window Sensor", "area": "Bedroom"}
   ],
   "excluded_devices": [
     {"name": "Smart Lock", "area": "Front Door"}
