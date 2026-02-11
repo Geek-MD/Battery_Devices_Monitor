@@ -41,6 +41,24 @@ def get_battery_level(state: State) -> float | None:
     return None
 
 
+def has_battery_attribute(state: State) -> bool:
+    """Check if a state has battery attributes or is a battery entity.
+
+    Returns True if the entity has any battery attribute or if entity_id
+    contains "battery".
+    """
+    # Check if any battery attribute exists
+    for attr_name in BATTERY_ATTRS:
+        if attr_name in state.attributes:
+            return True
+    
+    # Heuristic: If entity_id contains "battery"
+    if "battery" in state.entity_id.lower():
+        return True
+    
+    return False
+
+
 def is_battery_device(state: State) -> bool:
     """Check if a state object represents a battery device.
 
@@ -49,6 +67,24 @@ def is_battery_device(state: State) -> bool:
     in its entity_id and a valid numeric state in the range 0-100.
     """
     return get_battery_level(state) is not None
+
+
+def has_battery_but_unavailable(state: State) -> bool:
+    """Check if a state has battery attributes but value is unavailable.
+
+    Returns True if the entity has battery attributes but the value cannot
+    be obtained (unavailable, unknown, or cannot be converted to float).
+    """
+    # First check if this entity has battery attributes
+    if not has_battery_attribute(state):
+        return False
+    
+    # If battery level can be obtained, it's available (not what we're looking for)
+    if get_battery_level(state) is not None:
+        return False
+    
+    # Has battery attribute but value cannot be obtained
+    return True
 
 
 def get_device_info(
@@ -133,3 +169,32 @@ def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
             }
 
     return battery_devices
+
+
+def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dict[str, str | None]]:
+    """Get devices that have battery but value is unavailable.
+
+    Returns a dictionary where:
+    - Key: device_id (or entity_id if device_id not available)
+    - Value: dict with 'name' and 'area'
+    """
+    devices_without_info: dict[str, dict[str, str | None]] = {}
+
+    for state in hass.states.async_all():
+        # Check if this device has battery attributes but value is unavailable
+        if not has_battery_but_unavailable(state):
+            continue
+
+        device_name, device_id, area_name = get_device_info(hass, state)
+
+        # Use device_id if available, otherwise use entity_id as unique key
+        unique_key = device_id if device_id else state.entity_id
+
+        # Only add if we haven't already processed this device
+        if unique_key not in devices_without_info:
+            devices_without_info[unique_key] = {
+                "name": device_name,
+                "area": area_name,
+            }
+
+    return devices_without_info
