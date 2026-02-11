@@ -173,7 +173,7 @@ class BatteryMonitorSensor(SensorEntity):
                 devices_above_threshold.append(device_info)
 
         # Process devices without battery info (also filter excluded)
-        devices_unavailable_info = {}
+        unavailable_devices_event_data = {}
         for device_key, device_data in all_devices_without_info.items():
             # Skip if device is excluded
             if device_key in excluded_devices:
@@ -194,7 +194,7 @@ class BatteryMonitorSensor(SensorEntity):
             display_name = device_data["name"]
             if device_data.get("area"):
                 display_name = f"{device_data['name']} ({device_data['area']})"
-            devices_unavailable_info[entity_id] = {
+            unavailable_devices_event_data[entity_id] = {
                 "name": display_name,
                 "entity_id": entity_id,
             }
@@ -240,11 +240,11 @@ class BatteryMonitorSensor(SensorEntity):
         self._previous_low_devices = current_low_devices
 
         # Fire events for newly detected unavailable battery devices
-        current_unavailable_devices = set(devices_unavailable_info.keys())
+        current_unavailable_devices = set(unavailable_devices_event_data.keys())
         new_unavailable_devices = current_unavailable_devices - self._previous_unavailable_devices
 
         for entity_id in new_unavailable_devices:
-            device_info = devices_unavailable_info[entity_id]
+            device_info = unavailable_devices_event_data[entity_id]
             self.hass.bus.async_fire(
                 EVENT_BATTERY_UNAVAILABLE,
                 {
