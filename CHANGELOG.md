@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-02-12
+
+### Fixed
+- Battery Devices Monitor sensor itself is no longer incorrectly included in `devices_without_battery_info` attribute. The sensor was being flagged because its entity_id contains "battery", triggering the heuristic detection logic. Now all entities from the battery_devices_monitor domain are properly excluded from monitoring.
+
 ## [1.7.0] - 2026-02-11
 
 ### Added

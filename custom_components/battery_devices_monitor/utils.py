@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
-from .const import BATTERY_ATTRS
+from .const import BATTERY_ATTRS, DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
@@ -19,6 +19,10 @@ def get_battery_level(state: State) -> float | None:
     and also checks the state value if entity_id contains "battery".
     Returns the battery level as a float, or None if not found.
     """
+    # Exclude entities from battery_devices_monitor domain (the monitor itself)
+    if state.entity_id.startswith(f"sensor.{DOMAIN}"):
+        return None
+    
     # First check for any battery attribute
     for attr_name in BATTERY_ATTRS:
         battery_value = state.attributes.get(attr_name)
@@ -47,6 +51,10 @@ def has_battery_attribute(state: State) -> bool:
     Returns True if the entity has any battery attribute or if entity_id
     contains "battery".
     """
+    # Exclude entities from battery_devices_monitor domain (the monitor itself)
+    if state.entity_id.startswith(f"sensor.{DOMAIN}"):
+        return False
+    
     # Check if any battery attribute exists
     for attr_name in BATTERY_ATTRS:
         if attr_name in state.attributes:
