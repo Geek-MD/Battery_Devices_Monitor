@@ -125,7 +125,7 @@ def get_device_info(
                 if identifier[0] == DOMAIN:
                     # This device belongs to our integration, return None for all values
                     return None, None, None
-            
+
             # Use device name or name_by_user if available
             device_name = device_entry.name_by_user or device_entry.name
 
@@ -160,7 +160,7 @@ def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
             continue
 
         device_name, device_id, area_name = get_device_info(hass, state)
-        
+
         # Skip if device belongs to battery_devices_monitor integration
         if device_name is None:
             continue
@@ -205,7 +205,7 @@ def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dict[str,
             continue
 
         device_name, device_id, area_name = get_device_info(hass, state)
-        
+
         # Skip if device belongs to battery_devices_monitor integration
         if device_name is None:
             continue
