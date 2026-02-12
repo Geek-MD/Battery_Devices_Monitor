@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.2] - 2026-02-12
+
+### Fixed
+- Battery Devices Monitor device itself is no longer incorrectly included in `devices_without_battery_info` attribute. The previous fix in v1.7.1 only excluded entities from the integration, but the device itself (created by the integration) was still being picked up. Now devices belonging to the battery_devices_monitor integration are properly excluded at the device registry level.
+
 ## [1.7.1] - 2026-02-12
 
 ### Fixed

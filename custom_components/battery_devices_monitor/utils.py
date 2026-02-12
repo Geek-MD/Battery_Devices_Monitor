@@ -97,13 +97,13 @@ def has_battery_but_unavailable(state: State) -> bool:
 
 def get_device_info(
     hass: HomeAssistant, state: State
-) -> tuple[str, str | None, str | None]:
+) -> tuple[str | None, str | None, str | None]:
     """Get device information for a battery entity.
 
     Returns a tuple of (display_name, device_id, area_name).
-    - display_name: The name to display (device name from registry or friendly_name)
-    - device_id: The device ID if available
-    - area_name: The area name if device is assigned to an area
+    - display_name: The name to display (device name from registry or friendly_name), or None if device belongs to battery_devices_monitor
+    - device_id: The device ID if available, or None
+    - area_name: The area name if device is assigned to an area, or None
     """
     entity_reg = er.async_get(hass)
     device_reg = dr.async_get(hass)
@@ -119,6 +119,13 @@ def get_device_info(
         device_id = entity_entry.device_id
         device_entry = device_reg.async_get(device_id)
         if device_entry:
+            # Check if this device belongs to battery_devices_monitor integration
+            # If so, skip it (the monitor itself should not be monitored)
+            for identifier in device_entry.identifiers:
+                if identifier[0] == DOMAIN:
+                    # This device belongs to our integration, return None for all values
+                    return None, None, None
+
             # Use device name or name_by_user if available
             device_name = device_entry.name_by_user or device_entry.name
 
@@ -153,6 +160,10 @@ def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
             continue
 
         device_name, device_id, area_name = get_device_info(hass, state)
+
+        # Skip if device belongs to battery_devices_monitor integration
+        if device_name is None:
+            continue
 
         # Use device_id if available, otherwise use entity_id as unique key
         unique_key = device_id if device_id else state.entity_id
@@ -194,6 +205,10 @@ def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dict[str,
             continue
 
         device_name, device_id, area_name = get_device_info(hass, state)
+
+        # Skip if device belongs to battery_devices_monitor integration
+        if device_name is None:
+            continue
 
         # Use device_id if available, otherwise use entity_id as unique key
         unique_key = device_id if device_id else state.entity_id
