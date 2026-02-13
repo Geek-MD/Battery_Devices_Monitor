@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Battery levels in sensor attributes (`devices_above_threshold` and `devices_below_threshold`) and events are now rounded to integers instead of showing decimal values.
-- README documentation clarified to explicitly state that `devices_above_threshold` contains devices with battery >= threshold (at or above), and `devices_below_threshold` contains devices with battery < threshold (strictly below). The code logic has always implemented this correctly.
+- README documentation clarified that `devices_above_threshold` uses `battery >= threshold` and `devices_below_threshold` uses `battery < threshold`. Code logic has always been correct.
 
 ## [1.8.0] - 2026-02-13
 
