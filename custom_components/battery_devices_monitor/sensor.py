@@ -158,7 +158,7 @@ class BatteryMonitorSensor(SensorEntity):
             device_info = {
                 "name": device_data["name"],
                 "area": device_data.get("area", ""),
-                "battery_level": device_data["battery_level"],
+                "battery_level": round(device_data["battery_level"]),
             }
 
             if device_data["battery_level"] < threshold:
@@ -169,7 +169,7 @@ class BatteryMonitorSensor(SensorEntity):
                     display_name = f"{device_data['name']} ({device_data['area']})"
                 devices_below_info[device_data["entity_id"]] = {
                     "name": display_name,
-                    "battery_level": device_data["battery_level"],
+                    "battery_level": round(device_data["battery_level"]),
                     "entity_id": device_data["entity_id"],
                 }
             else:
