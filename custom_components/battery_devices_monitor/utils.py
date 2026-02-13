@@ -148,6 +148,10 @@ def get_device_info(
 
             # Use device name or name_by_user if available
             device_name = device_entry.name_by_user or device_entry.name
+            
+            # Exclude devices with "Battery Devices Monitor" in their name
+            if device_name and "Battery Devices Monitor" in device_name:
+                return None, None, None
 
             # Get area name if device is assigned to an area
             if device_entry.area_id:
@@ -158,6 +162,10 @@ def get_device_info(
     # If we couldn't get the device name, fall back to the entity's friendly name
     if not device_name:
         device_name = state.attributes.get("friendly_name", state.entity_id)
+    
+    # Also check the fallback name for "Battery Devices Monitor"
+    if device_name and "Battery Devices Monitor" in device_name:
+        return None, None, None
 
     return device_name, device_id, area_name
 
