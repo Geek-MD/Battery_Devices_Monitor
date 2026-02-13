@@ -11,6 +11,9 @@ from .const import BATTERY_ATTRS, DOMAIN, EXCLUDED_ENTITY_DOMAINS
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
 
+# Name pattern to exclude from monitoring
+EXCLUDED_NAME_PATTERN = "Battery Devices Monitor"
+
 
 def should_exclude_entity(state: State) -> bool:
     """Check if an entity should be excluded from battery monitoring.
@@ -150,7 +153,7 @@ def get_device_info(
             device_name = device_entry.name_by_user or device_entry.name
             
             # Exclude devices with "Battery Devices Monitor" in their name
-            if device_name and "Battery Devices Monitor" in device_name:
+            if device_name and EXCLUDED_NAME_PATTERN in device_name:
                 return None, None, None
 
             # Get area name if device is assigned to an area
@@ -164,7 +167,7 @@ def get_device_info(
         device_name = state.attributes.get("friendly_name", state.entity_id)
     
     # Also check the fallback name for "Battery Devices Monitor"
-    if device_name and "Battery Devices Monitor" in device_name:
+    if device_name and EXCLUDED_NAME_PATTERN in device_name:
         return None, None, None
 
     return device_name, device_id, area_name
