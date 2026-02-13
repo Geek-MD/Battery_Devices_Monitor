@@ -13,6 +13,7 @@ from .const import (
     ATTR_DEVICES_ABOVE_THRESHOLD,
     ATTR_DEVICES_BELOW_THRESHOLD,
     ATTR_DEVICES_WITHOUT_BATTERY_INFO,
+    ATTR_DEVICES_WITHOUT_BATTERY_INFO_STATUS,
     ATTR_EXCLUDED_DEVICES,
     ATTR_TOTAL_MONITORED_DEVICES,
     CONF_BATTERY_THRESHOLD,
@@ -59,6 +60,7 @@ class BatteryMonitorSensor(SensorEntity):
         self._devices_below_threshold: list[dict[str, Any]] = []
         self._devices_above_threshold: list[dict[str, Any]] = []
         self._devices_without_battery_info: list[dict[str, str | None]] = []
+        self._devices_without_battery_info_status = STATE_OK
         self._total_devices = 0
         self._excluded_devices: list[dict[str, str]] = []
         self._previous_low_devices: set[str] = set()
@@ -86,6 +88,7 @@ class BatteryMonitorSensor(SensorEntity):
             ATTR_TOTAL_MONITORED_DEVICES: self._total_devices,
             ATTR_EXCLUDED_DEVICES: self._excluded_devices,
             ATTR_DEVICES_WITHOUT_BATTERY_INFO: self._devices_without_battery_info,
+            ATTR_DEVICES_WITHOUT_BATTERY_INFO_STATUS: self._devices_without_battery_info_status,
         }
 
     @property
@@ -260,3 +263,9 @@ class BatteryMonitorSensor(SensorEntity):
             self._state = STATE_PROBLEM
         else:
             self._state = STATE_OK
+
+        # Update devices_without_battery_info_status based on whether there are devices without battery info
+        if devices_without_info:
+            self._devices_without_battery_info_status = STATE_PROBLEM
+        else:
+            self._devices_without_battery_info_status = STATE_OK

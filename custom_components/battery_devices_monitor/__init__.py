@@ -8,7 +8,11 @@ from homeassistant.const import Platform
 from homeassistant.core import ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import ATTR_DEVICES_BELOW_THRESHOLD, DOMAIN
+from .const import (
+    ATTR_DEVICES_BELOW_THRESHOLD,
+    ATTR_DEVICES_WITHOUT_BATTERY_INFO,
+    DOMAIN,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -70,6 +74,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         supports_response=SupportsResponse.ONLY,
     )
 
+    # Register service for devices without battery info
+    async def get_devices_without_battery_info(call: ServiceCall) -> ServiceResponse:
+        """Get formatted list of devices without battery info."""
+        entity_id = call.data.get("entity_id")
+        
+        if not entity_id:
+            raise HomeAssistantError("entity_id is required")
+        
+        state = hass.states.get(entity_id)
+        if not state:
+            raise HomeAssistantError(f"Entity {entity_id} not found")
+        
+        devices_without_info = state.attributes.get(ATTR_DEVICES_WITHOUT_BATTERY_INFO, [])
+        
+        # Format output: "name (area)\n"
+        output_lines = []
+        for device in devices_without_info:
+            name = device.get("name", "Unknown")
+            area = device.get("area", "")
+            
+            # Format line
+            if area:
+                line = f"{name} ({area})"
+            else:
+                line = name
+            
+            output_lines.append(line)
+        
+        # Join with newlines
+        formatted_output = "\n".join(output_lines)
+        
+        return {"result": formatted_output}
+    
+    hass.services.async_register(
+        DOMAIN,
+        "get_devices_without_battery_info",
+        get_devices_without_battery_info,
+        supports_response=SupportsResponse.ONLY,
+    )
+
     return True
 
 
@@ -78,9 +122,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
-        # Unregister service when last entry is unloaded
+        # Unregister services when last entry is unloaded
         if not hass.data[DOMAIN]:
             hass.services.async_remove(DOMAIN, "get_low_battery_devices")
+            hass.services.async_remove(DOMAIN, "get_devices_without_battery_info")
 
     return unload_ok
 

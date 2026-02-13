@@ -68,6 +68,7 @@ After installation and configuration, the integration creates a sensor named `se
 - `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
 - `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
 - `devices_without_battery_info`: List of devices with battery but whose value is unavailable. Each entry contains `name` (device name) and `area` (area name or empty string)
+- `devices_without_battery_info_status`: Status showing "OK" when no devices have unavailable battery info, or "Problem" when one or more devices have unavailable battery info
 - `excluded_devices`: List of excluded devices. Each entry contains `name` (device name) and `area` (area name or empty string)
 - `total_monitored_devices`: Total count of monitored devices (includes devices with available battery info and devices with unavailable battery info)
 
@@ -88,6 +89,7 @@ After installation and configuration, the integration creates a sensor named `se
     {"name": "Leak Sensor", "area": "Bathroom"},
     {"name": "Window Sensor", "area": "Bedroom"}
   ],
+  "devices_without_battery_info_status": "Problem",
   "excluded_devices": [
     {"name": "Smart Lock", "area": "Front Door"}
   ],
@@ -126,6 +128,23 @@ automation:
           message: >
             Device {{ trigger.event.data.name }} has low battery 
             ({{ trigger.event.data.battery_level }}%)
+
+  - alias: "Notify Devices Without Battery Info"
+    trigger:
+      - platform: state
+        entity_id: sensor.battery_monitor_status
+        attribute: devices_without_battery_info_status
+        to: "Problem"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Battery Communication Issue"
+          message: >
+            {% set devices = state_attr('sensor.battery_monitor_status', 'devices_without_battery_info') %}
+            {{ devices | length }} device(s) have unavailable battery info:
+            {% for device in devices %}
+            - {{ device.name }}{% if device.area %} ({{ device.area }}){% endif %}
+            {% endfor %}
 ```
 
 ## Services
@@ -199,6 +218,85 @@ script:
               message: |
                 The following devices need new batteries:
                 {{ battery_list.result }}
+```
+
+### `battery_devices_monitor.get_devices_without_battery_info`
+
+Returns a formatted list of devices with battery but whose value is unavailable, unknown, or invalid. This service can be used in automations to get a human-readable list of devices that may be offline or having communication issues.
+
+**Service Data:**
+- `entity_id` (required): The entity ID of the battery monitor sensor (e.g., `sensor.battery_monitor_status`)
+
+**Returns:**
+A dictionary with a `result` field containing a formatted string with one device per line in the format: `name (area)`
+
+**Response Variable:**
+- **Name**: `result`
+- **Type**: String (multi-line)
+- **Description**: Formatted list with one device per line. Each line follows the format: "name (area)" or just "name" if no area is assigned.
+- **Usage**: Access it in your automation using `{{ response_variable_name.result }}`
+
+**Example Service Call:**
+```yaml
+service: battery_devices_monitor.get_devices_without_battery_info
+data:
+  entity_id: sensor.battery_monitor_status
+response_variable: unavailable_devices
+```
+
+**Example Output (accessed as `unavailable_devices.result`):**
+```
+Leak Sensor (Bathroom)
+Window Sensor (Bedroom)
+Door Sensor
+```
+
+**Example Automation Using the Service:**
+```yaml
+automation:
+  - alias: "Send Unavailable Battery Devices Report"
+    trigger:
+      - platform: time
+        at: "09:00:00"
+    action:
+      - service: battery_devices_monitor.get_devices_without_battery_info
+        data:
+          entity_id: sensor.battery_monitor_status
+        response_variable: unavailable_report
+      - if:
+          - condition: template
+            value_template: "{{ unavailable_report.result != '' }}"
+        then:
+          - service: notify.mobile_app
+            data:
+              title: "Devices with Battery Issues"
+              message: |
+                The following devices may be offline or have communication issues:
+                {{ unavailable_report.result }}
+```
+
+**Advanced Example - Combined with Event:**
+```yaml
+automation:
+  - alias: "Track Battery Unavailable Devices"
+    trigger:
+      - platform: event
+        event_type: battery_devices_monitor_battery_unavailable
+    action:
+      # Wait a bit to let the sensor update
+      - delay: "00:00:05"
+      - service: battery_devices_monitor.get_devices_without_battery_info
+        data:
+          entity_id: sensor.battery_monitor_status
+        response_variable: all_unavailable
+      - service: persistent_notification.create
+        data:
+          title: "Battery Communication Issue"
+          message: |
+            Device {{ trigger.event.data.name }} is now unavailable.
+            
+            All devices with battery issues:
+            {{ all_unavailable.result }}
 ```
 
 ## Events
