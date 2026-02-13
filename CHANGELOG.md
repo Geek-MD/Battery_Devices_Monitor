@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-02-13
+
+### Added
+- New service `get_devices_without_battery_info` that returns a formatted list of devices with battery but whose value is unavailable, unknown, or invalid
+- Service output format: "name (area)\n" with one device per line
+- Service can be used in automations with response_variable to get information about devices without battery info
+- Event `battery_devices_monitor_battery_unavailable` (already exists from v1.7.0) can be used alongside this service for automation
+
 ## [1.7.2] - 2026-02-12
 
 ### Fixed
