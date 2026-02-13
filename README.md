@@ -61,12 +61,12 @@ The integration can be configured through the Home Assistant UI:
 After installation and configuration, the integration creates a sensor named `sensor.battery_monitor_status` with:
 
 ### States
-- **OK**: All monitored devices have battery levels above the threshold
-- **Problem**: One or more devices have battery levels below the threshold
+- **OK**: All monitored devices have battery levels at or above the threshold (battery >= threshold)
+- **Problem**: One or more devices have battery levels below the threshold (battery < threshold)
 
 ### Attributes
-- `devices_below_threshold`: List of devices with battery below threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
-- `devices_above_threshold`: List of devices with battery above threshold. Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
+- `devices_below_threshold`: List of devices with battery **below** threshold (battery < threshold). Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
+- `devices_above_threshold`: List of devices with battery **at or above** threshold (battery >= threshold). Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
 - `devices_without_battery_info`: List of devices with battery but whose value is unavailable. Each entry contains `name` (device name) and `area` (area name or empty string)
 - `devices_without_battery_info_status`: Status showing "OK" when no devices have unavailable battery info, or "Problem" when one or more devices have unavailable battery info
 - `excluded_devices`: List of excluded devices. Each entry contains `name` (device name) and `area` (area name or empty string)
