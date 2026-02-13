@@ -6,10 +6,30 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
-from .const import BATTERY_ATTRS, DOMAIN
+from .const import BATTERY_ATTRS, DOMAIN, EXCLUDED_ENTITY_DOMAINS
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
+
+
+def should_exclude_entity(state: State) -> bool:
+    """Check if an entity should be excluded from battery monitoring.
+    
+    Returns True if the entity should be excluded, False otherwise.
+    Excludes:
+    - Entities from the battery_devices_monitor domain itself
+    - Entities from excluded domains (automation, scene, script)
+    """
+    # Exclude entities from battery_devices_monitor domain (the monitor itself)
+    if state.entity_id.startswith(f"sensor.{DOMAIN}"):
+        return True
+    
+    # Exclude entities from specific domains
+    entity_domain = state.entity_id.split(".")[0] if "." in state.entity_id else ""
+    if entity_domain in EXCLUDED_ENTITY_DOMAINS:
+        return True
+    
+    return False
 
 
 def get_battery_level(state: State) -> float | None:
@@ -19,8 +39,8 @@ def get_battery_level(state: State) -> float | None:
     and also checks the state value if entity_id contains "battery".
     Returns the battery level as a float, or None if not found.
     """
-    # Exclude entities from battery_devices_monitor domain (the monitor itself)
-    if state.entity_id.startswith(f"sensor.{DOMAIN}"):
+    # Exclude entities that should not be monitored
+    if should_exclude_entity(state):
         return None
     
     # First check for any battery attribute
@@ -51,8 +71,8 @@ def has_battery_attribute(state: State) -> bool:
     Returns True if the entity has any battery attribute or if entity_id
     contains "battery".
     """
-    # Exclude entities from battery_devices_monitor domain (the monitor itself)
-    if state.entity_id.startswith(f"sensor.{DOMAIN}"):
+    # Exclude entities that should not be monitored
+    if should_exclude_entity(state):
         return False
     
     # Check if any battery attribute exists
