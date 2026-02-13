@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Service output format: "name (area)\n" with one device per line
 - Service can be used in automations with response_variable to get information about devices without battery info
 - Event `battery_devices_monitor_battery_unavailable` (already exists from v1.7.0) can be used alongside this service for automation
+- New sensor attribute `devices_without_battery_info_status` that shows "OK" when no devices have unavailable battery info, or "Problem" when one or more devices have unavailable battery info
 
 ## [1.7.2] - 2026-02-12
 
