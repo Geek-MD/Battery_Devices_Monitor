@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Battery Devices Monitor integration and other non-device entities (automations, scenes, scripts) are no longer incorrectly included in `devices_without_battery_info` attribute. The heuristic detection that checks for "battery" in entity_id now properly excludes automation, scene, and script entities even if they contain "battery" in their name.
 
+### Changed
+- Battery levels in sensor attributes (`devices_above_threshold` and `devices_below_threshold`) and events are now rounded to integers instead of showing decimal values.
+
 ## [1.8.0] - 2026-02-13
 
 ### Added
