@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.7] - 2026-02-15
+
+### Fixed
+- **Enhanced error logging for configuration flow 500 errors**. Despite the fixes in v1.8.6 addressing async/sync issues, the 500 Internal Server Error could still occur for other reasons but was not being logged. This update adds comprehensive try-except blocks with full error logging to all configuration flow step functions (`async_step_user`, `async_step_exclude_devices`, `async_step_init`) and to `async_setup_entry`. Now any exception that occurs during configuration or setup will be logged with full stack traces (`exc_info=True`), making it possible to diagnose the root cause of 500 errors.
+  - Added try-except blocks with error logging to all async step functions in config flow
+  - Added try-except block with error logging to async_setup_entry
+  - Error handlers return user-friendly error forms instead of causing 500 errors
+  - Added debug logging at entry points of each step function to trace execution flow
+  - All exceptions are now caught and logged, enabling proper diagnosis of configuration issues
+
 ## [1.8.6] - 2026-02-15
 
 ### Fixed
