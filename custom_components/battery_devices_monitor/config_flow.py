@@ -42,33 +42,62 @@ class BatteryDevicesMonitorConfigFlow(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step - configure threshold."""
+        _LOGGER.debug("Config flow: async_step_user started with user_input: %s", user_input is not None)
         errors: dict[str, str] = {}
 
-        if user_input is not None:
-            # Store threshold and move to next step
-            self._threshold = user_input[CONF_BATTERY_THRESHOLD]
-            return await self.async_step_exclude_devices()
+        try:
+            if user_input is not None:
+                # Store threshold and move to next step
+                self._threshold = user_input[CONF_BATTERY_THRESHOLD]
+                _LOGGER.debug("Config flow: Threshold set to %s, proceeding to exclude_devices step", self._threshold)
+                return await self.async_step_exclude_devices()
 
-        data_schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_BATTERY_THRESHOLD,
-                    default=DEFAULT_BATTERY_THRESHOLD,
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=100,
-                        mode=selector.NumberSelectorMode.BOX,
+            data_schema = vol.Schema(
+                {
+                    vol.Required(
+                        CONF_BATTERY_THRESHOLD,
+                        default=DEFAULT_BATTERY_THRESHOLD,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=100,
+                            mode=selector.NumberSelectorMode.BOX,
+                        ),
                     ),
-                ),
-            }
-        )
+                }
+            )
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=data_schema,
-            errors=errors,
-        )
+            _LOGGER.debug("Config flow: Showing user form for threshold configuration")
+            return self.async_show_form(
+                step_id="user",
+                data_schema=data_schema,
+                errors=errors,
+            )
+        except Exception as err:
+            _LOGGER.error(
+                "Config flow: Unexpected error in async_step_user: %s",
+                err,
+                exc_info=True,
+            )
+            errors["base"] = "unknown"
+            return self.async_show_form(
+                step_id="user",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_BATTERY_THRESHOLD,
+                            default=DEFAULT_BATTERY_THRESHOLD,
+                        ): selector.NumberSelector(
+                            selector.NumberSelectorConfig(
+                                min=0,
+                                max=100,
+                                mode=selector.NumberSelectorMode.BOX,
+                            ),
+                        ),
+                    }
+                ),
+                errors=errors,
+            )
 
     async def _get_battery_devices(self) -> dict[str, str]:
         """Get all devices with battery level attribute.
@@ -114,39 +143,67 @@ class BatteryDevicesMonitorConfigFlow(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the second step - select devices to exclude."""
-        _LOGGER.debug("Config flow: async_step_exclude_devices called with input: %s", user_input is not None)
-        if user_input is not None:
-            # Check if already configured
-            await self.async_set_unique_id(DOMAIN)
-            self._abort_if_unique_id_configured()
+        _LOGGER.debug("Config flow: async_step_exclude_devices started with user_input: %s", user_input is not None)
+        
+        try:
+            if user_input is not None:
+                _LOGGER.debug("Config flow: Processing user input for device exclusion")
+                # Check if already configured
+                await self.async_set_unique_id(DOMAIN)
+                self._abort_if_unique_id_configured()
 
-            # Combine threshold and excluded devices
-            config_data = {
-                CONF_BATTERY_THRESHOLD: self._threshold,
-                CONF_EXCLUDED_DEVICES: user_input.get(CONF_EXCLUDED_DEVICES, []),
-            }
+                # Combine threshold and excluded devices
+                config_data = {
+                    CONF_BATTERY_THRESHOLD: self._threshold,
+                    CONF_EXCLUDED_DEVICES: user_input.get(CONF_EXCLUDED_DEVICES, []),
+                }
 
-            return self.async_create_entry(
-                title="Battery Devices Monitor",
-                data={},
-                options=config_data,
+                _LOGGER.debug("Config flow: Creating config entry with threshold=%s, excluded_devices=%s", 
+                             self._threshold, len(config_data[CONF_EXCLUDED_DEVICES]))
+                return self.async_create_entry(
+                    title="Battery Devices Monitor",
+                    data={},
+                    options=config_data,
+                )
+
+            _LOGGER.debug("Config flow: Fetching battery devices for exclusion selection")
+            battery_devices = await self._get_battery_devices()
+            _LOGGER.debug("Config flow: Found %d battery devices for selection", len(battery_devices))
+
+            data_schema = vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_EXCLUDED_DEVICES,
+                        default=DEFAULT_EXCLUDED_DEVICES,
+                    ): cv.multi_select(battery_devices),
+                }
             )
 
-        battery_devices = await self._get_battery_devices()
-
-        data_schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_EXCLUDED_DEVICES,
-                    default=DEFAULT_EXCLUDED_DEVICES,
-                ): cv.multi_select(battery_devices),
-            }
-        )
-
-        return self.async_show_form(
-            step_id="exclude_devices",
-            data_schema=data_schema,
-        )
+            _LOGGER.debug("Config flow: Showing exclude_devices form")
+            return self.async_show_form(
+                step_id="exclude_devices",
+                data_schema=data_schema,
+            )
+        except Exception as err:
+            _LOGGER.error(
+                "Config flow: Unexpected error in async_step_exclude_devices: %s",
+                err,
+                exc_info=True,
+            )
+            # Try to show form with empty device list to avoid 500 error
+            errors = {"base": "unknown"}
+            return self.async_show_form(
+                step_id="exclude_devices",
+                data_schema=vol.Schema(
+                    {
+                        vol.Optional(
+                            CONF_EXCLUDED_DEVICES,
+                            default=DEFAULT_EXCLUDED_DEVICES,
+                        ): cv.multi_select({}),
+                    }
+                ),
+                errors=errors,
+            )
 
     @staticmethod
     @callback
@@ -208,34 +265,74 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
-        _LOGGER.debug("Options flow: async_step_init called with input: %s", user_input is not None)
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+        _LOGGER.debug("Options flow: async_step_init started with user_input: %s", user_input is not None)
+        
+        try:
+            if user_input is not None:
+                _LOGGER.debug("Options flow: Updating options with new configuration")
+                return self.async_create_entry(title="", data=user_input)
 
-        battery_devices = await self._get_battery_devices()
+            _LOGGER.debug("Options flow: Fetching battery devices for options form")
+            battery_devices = await self._get_battery_devices()
+            _LOGGER.debug("Options flow: Found %d battery devices for selection", len(battery_devices))
 
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_BATTERY_THRESHOLD,
-                        default=self.config_entry.options.get(
-                            CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
+            _LOGGER.debug("Options flow: Showing init form with current options")
+            return self.async_show_form(
+                step_id="init",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_BATTERY_THRESHOLD,
+                            default=self.config_entry.options.get(
+                                CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
+                            ),
+                        ): selector.NumberSelector(
+                            selector.NumberSelectorConfig(
+                                min=0,
+                                max=100,
+                                mode=selector.NumberSelectorMode.BOX,
+                            ),
                         ),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0,
-                            max=100,
-                            mode=selector.NumberSelectorMode.BOX,
+                        vol.Optional(
+                            CONF_EXCLUDED_DEVICES,
+                            default=self.config_entry.options.get(
+                                CONF_EXCLUDED_DEVICES, DEFAULT_EXCLUDED_DEVICES
+                            ),
+                        ): cv.multi_select(battery_devices),
+                    }
+                ),
+            )
+        except Exception as err:
+            _LOGGER.error(
+                "Options flow: Unexpected error in async_step_init: %s",
+                err,
+                exc_info=True,
+            )
+            # Try to show form with empty device list to avoid 500 error
+            errors = {"base": "unknown"}
+            return self.async_show_form(
+                step_id="init",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_BATTERY_THRESHOLD,
+                            default=self.config_entry.options.get(
+                                CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
+                            ),
+                        ): selector.NumberSelector(
+                            selector.NumberSelectorConfig(
+                                min=0,
+                                max=100,
+                                mode=selector.NumberSelectorMode.BOX,
+                            ),
                         ),
-                    ),
-                    vol.Optional(
-                        CONF_EXCLUDED_DEVICES,
-                        default=self.config_entry.options.get(
-                            CONF_EXCLUDED_DEVICES, DEFAULT_EXCLUDED_DEVICES
-                        ),
-                    ): cv.multi_select(battery_devices),
-                }
-            ),
-        )
+                        vol.Optional(
+                            CONF_EXCLUDED_DEVICES,
+                            default=self.config_entry.options.get(
+                                CONF_EXCLUDED_DEVICES, DEFAULT_EXCLUDED_DEVICES
+                            ),
+                        ): cv.multi_select({}),
+                    }
+                ),
+                errors=errors,
+            )
