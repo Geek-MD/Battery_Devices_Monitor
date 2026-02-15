@@ -131,18 +131,9 @@ async def get_device_info(
     - device_id: The device ID if available, or None
     - area_name: The area name if device is assigned to an area, or None
     """
-    try:
-        entity_reg = er.async_get(hass)
-        device_reg = dr.async_get(hass)
-        area_reg = ar.async_get(hass)
-    except Exception as err:
-        _LOGGER.error(
-            "Error accessing registries for entity %s: %s",
-            state.entity_id,
-            err,
-            exc_info=True,
-        )
-        return None, None, None
+    entity_reg = er.async_get(hass)
+    device_reg = dr.async_get(hass)
+    area_reg = ar.async_get(hass)
 
     device_name = None
     device_id = None
@@ -195,12 +186,8 @@ async def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, An
     _LOGGER.debug("Starting get_all_battery_devices")
     battery_devices: dict[str, dict[str, Any]] = {}
 
-    try:
-        all_states = hass.states.async_all()
-        _LOGGER.debug("Retrieved %d total states from Home Assistant", len(all_states))
-    except Exception as err:
-        _LOGGER.error("Error getting states from Home Assistant: %s", err, exc_info=True)
-        return {}
+    all_states = hass.states.async_all()
+    _LOGGER.debug("Retrieved %d total states from Home Assistant", len(all_states))
 
     for state in all_states:
         if not is_battery_device(state):
@@ -261,11 +248,7 @@ async def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dic
     _LOGGER.debug("Starting get_devices_without_battery_info")
     devices_without_info: dict[str, dict[str, str | None]] = {}
 
-    try:
-        all_states = hass.states.async_all()
-    except Exception as err:
-        _LOGGER.error("Error getting states from Home Assistant: %s", err, exc_info=True)
-        return {}
+    all_states = hass.states.async_all()
 
     for state in all_states:
         # Check if this device has battery attributes but value is unavailable
