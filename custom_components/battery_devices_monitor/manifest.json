@@ -4,6 +4,7 @@
   "codeowners": ["@Geek-MD"],
   "config_flow": true,
   "dependencies": [],
+  "diagnostics": ["config_entry"],
   "documentation": "https://github.com/Geek-MD/Battery_Devices_Monitor",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/Geek-MD/Battery_Devices_Monitor/issues",

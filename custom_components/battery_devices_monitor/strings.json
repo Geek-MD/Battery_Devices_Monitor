@@ -24,6 +24,10 @@
     },
     "abort": {
       "already_configured": "Battery Devices Monitor is already configured"
+    },
+    "error": {
+      "unknown": "An unexpected error occurred. Please check the logs for more details.",
+      "cannot_connect": "Failed to fetch battery devices from Home Assistant. Please try again."
     }
   },
   "options": {
@@ -40,6 +44,10 @@
           "excluded_devices": "Select devices to exclude from monitoring"
         }
       }
+    },
+    "error": {
+      "unknown": "An unexpected error occurred. Please check the logs for more details.",
+      "cannot_connect": "Failed to fetch battery devices from Home Assistant. Please try again."
     }
   },
   "services": {

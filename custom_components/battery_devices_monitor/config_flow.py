@@ -266,73 +266,104 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage the options."""
         _LOGGER.debug("Options flow: async_step_init started with user_input: %s", user_input is not None)
+        
+        errors: dict[str, str] = {}
 
-        try:
-            if user_input is not None:
+        if user_input is not None:
+            try:
                 _LOGGER.debug("Options flow: Updating options with new configuration")
                 return self.async_create_entry(title="", data=user_input)
+            except Exception as err:
+                _LOGGER.error(
+                    "Options flow: Error saving configuration: %s",
+                    err,
+                    exc_info=True,
+                )
+                errors["base"] = "unknown"
 
-            _LOGGER.debug("Options flow: Fetching battery devices for options form")
-            battery_devices = await self._get_battery_devices()
-            _LOGGER.debug("Options flow: Found %d battery devices for selection", len(battery_devices))
-
-            _LOGGER.debug("Options flow: Showing init form with current options")
-            return self.async_show_form(
-                step_id="init",
-                data_schema=vol.Schema(
-                    {
-                        vol.Required(
-                            CONF_BATTERY_THRESHOLD,
-                            default=self.config_entry.options.get(
-                                CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
-                            ),
-                        ): selector.NumberSelector(
-                            selector.NumberSelectorConfig(
-                                min=0,
-                                max=100,
-                                mode=selector.NumberSelectorMode.BOX,
-                            ),
-                        ),
-                        vol.Optional(
-                            CONF_EXCLUDED_DEVICES,
-                            default=self.config_entry.options.get(
-                                CONF_EXCLUDED_DEVICES, DEFAULT_EXCLUDED_DEVICES
-                            ),
-                        ): cv.multi_select(battery_devices),
-                    }
-                ),
+        # Get current configuration values with safe fallbacks
+        try:
+            current_threshold = self.config_entry.options.get(
+                CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
+            )
+            current_excluded = self.config_entry.options.get(
+                CONF_EXCLUDED_DEVICES, DEFAULT_EXCLUDED_DEVICES
             )
         except Exception as err:
             _LOGGER.error(
-                "Options flow: Unexpected error in async_step_init: %s",
+                "Options flow: Error reading current options: %s",
                 err,
                 exc_info=True,
             )
-            # Try to show form with empty device list to avoid 500 error
-            errors = {"base": "unknown"}
-            return self.async_show_form(
-                step_id="init",
-                data_schema=vol.Schema(
-                    {
-                        vol.Required(
-                            CONF_BATTERY_THRESHOLD,
-                            default=self.config_entry.options.get(
-                                CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
-                            ),
-                        ): selector.NumberSelector(
-                            selector.NumberSelectorConfig(
-                                min=0,
-                                max=100,
-                                mode=selector.NumberSelectorMode.BOX,
-                            ),
-                        ),
-                        vol.Optional(
-                            CONF_EXCLUDED_DEVICES,
-                            default=self.config_entry.options.get(
-                                CONF_EXCLUDED_DEVICES, DEFAULT_EXCLUDED_DEVICES
-                            ),
-                        ): cv.multi_select({}),
-                    }
-                ),
-                errors=errors,
+            current_threshold = DEFAULT_BATTERY_THRESHOLD
+            current_excluded = DEFAULT_EXCLUDED_DEVICES
+            errors["base"] = "cannot_connect"
+
+        # Fetch battery devices
+        try:
+            _LOGGER.debug("Options flow: Fetching battery devices for options form")
+            battery_devices = await self._get_battery_devices()
+            _LOGGER.debug("Options flow: Found %d battery devices for selection", len(battery_devices))
+        except Exception as err:
+            _LOGGER.error(
+                "Options flow: Error fetching battery devices: %s",
+                err,
+                exc_info=True,
             )
+            battery_devices = {}
+            if "base" not in errors:
+                errors["base"] = "cannot_connect"
+
+        # Build the form schema
+        try:
+            data_schema = vol.Schema(
+                {
+                    vol.Required(
+                        CONF_BATTERY_THRESHOLD,
+                        default=current_threshold,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=100,
+                            mode=selector.NumberSelectorMode.BOX,
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_EXCLUDED_DEVICES,
+                        default=current_excluded,
+                    ): cv.multi_select(battery_devices),
+                }
+            )
+        except Exception as err:
+            _LOGGER.error(
+                "Options flow: Error building form schema: %s",
+                err,
+                exc_info=True,
+            )
+            # Create a minimal fallback schema
+            data_schema = vol.Schema(
+                {
+                    vol.Required(
+                        CONF_BATTERY_THRESHOLD,
+                        default=DEFAULT_BATTERY_THRESHOLD,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=100,
+                            mode=selector.NumberSelectorMode.BOX,
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_EXCLUDED_DEVICES,
+                        default=DEFAULT_EXCLUDED_DEVICES,
+                    ): cv.multi_select({}),
+                }
+            )
+            errors["base"] = "unknown"
+
+        _LOGGER.debug("Options flow: Showing init form with %d errors", len(errors))
+        return self.async_show_form(
+            step_id="init",
+            data_schema=data_schema,
+            errors=errors,
+        )
