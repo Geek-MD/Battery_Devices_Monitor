@@ -25,7 +25,7 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     _LOGGER.debug("Generating diagnostics for entry: %s", entry.entry_id)
-    
+
     try:
         # Get configuration
         threshold = entry.options.get(CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD)
