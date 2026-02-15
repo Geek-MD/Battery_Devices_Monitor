@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.5] - 2026-02-15
+
+### Fixed
+- HTTP 500 error when reconfiguring the integration through the UI. Added comprehensive error handling and logging in config flow to catch and log exceptions, preventing the integration from crashing when trying to retrieve battery devices. The config flow now gracefully handles errors and returns an empty device list instead of failing with a 500 error.
+
 ## [1.8.2] - 2026-02-13
 
 ### Fixed

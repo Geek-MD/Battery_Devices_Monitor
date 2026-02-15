@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -21,6 +22,8 @@ from .utils import get_all_battery_devices
 
 if TYPE_CHECKING:
     from homeassistant.data_entry_flow import FlowResult
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class BatteryDevicesMonitorConfigFlow(
@@ -74,27 +77,36 @@ class BatteryDevicesMonitorConfigFlow(
         - Key: device_id or entity_id (unique identifier)
         - Value: display name with area (if available)
         """
-        all_devices = get_all_battery_devices(self.hass)
-        
-        # Create list of tuples (device_key, device_data) for sorting
-        device_list = []
-        for device_key, device_data in all_devices.items():
-            device_list.append((device_key, device_data))
-        
-        # Sort by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
-        device_list.sort(key=lambda x: (x[1]["name"].lower(), (x[1].get("area", "") or "").lower()))
-        
-        # Create display dict for the multi-select
-        battery_devices = {}
-        for device_key, device_data in device_list:
-            # Create a descriptive display name
-            display_name = device_data["name"]
-            if device_data.get("area"):
-                display_name = f"{device_data['name']} ({device_data['area']})"
+        try:
+            all_devices = get_all_battery_devices(self.hass)
             
-            battery_devices[device_key] = display_name
-        
-        return battery_devices
+            # Create list of tuples (device_key, device_data) for sorting
+            device_list = []
+            for device_key, device_data in all_devices.items():
+                device_list.append((device_key, device_data))
+            
+            # Sort by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
+            device_list.sort(key=lambda x: (x[1]["name"].lower(), (x[1].get("area", "") or "").lower()))
+            
+            # Create display dict for the multi-select
+            battery_devices = {}
+            for device_key, device_data in device_list:
+                # Create a descriptive display name
+                display_name = device_data["name"]
+                if device_data.get("area"):
+                    display_name = f"{device_data['name']} ({device_data['area']})"
+                
+                battery_devices[device_key] = display_name
+            
+            return battery_devices
+        except Exception as err:
+            _LOGGER.error(
+                "Error getting battery devices in config flow: %s",
+                err,
+                exc_info=True,
+            )
+            # Return empty dict to prevent 500 error
+            return {}
 
     async def async_step_exclude_devices(
         self, user_input: dict[str, Any] | None = None
@@ -156,27 +168,36 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         - Key: device_id or entity_id (unique identifier)
         - Value: display name with area (if available)
         """
-        all_devices = get_all_battery_devices(self.hass)
-        
-        # Create list of tuples (device_key, device_data) for sorting
-        device_list = []
-        for device_key, device_data in all_devices.items():
-            device_list.append((device_key, device_data))
-        
-        # Sort by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
-        device_list.sort(key=lambda x: (x[1]["name"].lower(), (x[1].get("area", "") or "").lower()))
-        
-        # Create display dict for the multi-select
-        battery_devices = {}
-        for device_key, device_data in device_list:
-            # Create a descriptive display name
-            display_name = device_data["name"]
-            if device_data.get("area"):
-                display_name = f"{device_data['name']} ({device_data['area']})"
+        try:
+            all_devices = get_all_battery_devices(self.hass)
             
-            battery_devices[device_key] = display_name
-        
-        return battery_devices
+            # Create list of tuples (device_key, device_data) for sorting
+            device_list = []
+            for device_key, device_data in all_devices.items():
+                device_list.append((device_key, device_data))
+            
+            # Sort by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
+            device_list.sort(key=lambda x: (x[1]["name"].lower(), (x[1].get("area", "") or "").lower()))
+            
+            # Create display dict for the multi-select
+            battery_devices = {}
+            for device_key, device_data in device_list:
+                # Create a descriptive display name
+                display_name = device_data["name"]
+                if device_data.get("area"):
+                    display_name = f"{device_data['name']} ({device_data['area']})"
+                
+                battery_devices[device_key] = display_name
+            
+            return battery_devices
+        except Exception as err:
+            _LOGGER.error(
+                "Error getting battery devices in options flow: %s",
+                err,
+                exc_info=True,
+            )
+            # Return empty dict to prevent 500 error
+            return {}
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
