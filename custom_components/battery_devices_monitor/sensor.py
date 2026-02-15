@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -32,6 +33,8 @@ from .utils import get_all_battery_devices, get_devices_without_battery_info
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -122,9 +125,6 @@ class BatteryMonitorSensor(SensorEntity):
 
     async def async_update(self) -> None:
         """Update the sensor state."""
-        import logging
-        _LOGGER = logging.getLogger(__name__)
-        
         _LOGGER.debug("Sensor: Starting async_update")
         threshold = self._config_entry.options.get(
             CONF_BATTERY_THRESHOLD,

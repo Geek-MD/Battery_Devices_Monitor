@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
 
 # Name pattern to exclude from monitoring
 EXCLUDED_NAME_PATTERN = "Battery Devices Monitor"
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def should_exclude_entity(state: State) -> bool:
@@ -128,9 +131,6 @@ async def get_device_info(
     - device_id: The device ID if available, or None
     - area_name: The area name if device is assigned to an area, or None
     """
-    import logging
-    _LOGGER = logging.getLogger(__name__)
-    
     try:
         entity_reg = er.async_get(hass)
         device_reg = dr.async_get(hass)
@@ -192,9 +192,6 @@ async def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, An
     - Key: device_id (or entity_id if device_id not available)
     - Value: dict with 'name', 'entity_id', 'area', 'battery_level'
     """
-    import logging
-    _LOGGER = logging.getLogger(__name__)
-    
     _LOGGER.debug("Starting get_all_battery_devices")
     battery_devices: dict[str, dict[str, Any]] = {}
 
@@ -261,9 +258,6 @@ async def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dic
     - Key: device_id (or entity_id if device_id not available)
     - Value: dict with 'name', 'area', and 'entity_id'
     """
-    import logging
-    _LOGGER = logging.getLogger(__name__)
-    
     _LOGGER.debug("Starting get_devices_without_battery_info")
     devices_without_info: dict[str, dict[str, str | None]] = {}
 
