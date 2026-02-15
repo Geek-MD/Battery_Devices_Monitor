@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -32,6 +33,8 @@ from .utils import get_all_battery_devices, get_devices_without_battery_info
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -122,6 +125,7 @@ class BatteryMonitorSensor(SensorEntity):
 
     async def async_update(self) -> None:
         """Update the sensor state."""
+        _LOGGER.debug("Sensor: Starting async_update")
         threshold = self._config_entry.options.get(
             CONF_BATTERY_THRESHOLD,
             DEFAULT_BATTERY_THRESHOLD,
@@ -138,10 +142,22 @@ class BatteryMonitorSensor(SensorEntity):
         devices_without_info = []
 
         # Get all battery devices using shared utility
-        all_devices = get_all_battery_devices(self.hass)
+        try:
+            _LOGGER.debug("Sensor: Getting all battery devices")
+            all_devices = await get_all_battery_devices(self.hass)
+            _LOGGER.debug("Sensor: Retrieved %d battery devices", len(all_devices))
+        except Exception as err:
+            _LOGGER.error("Sensor: Error getting battery devices: %s", err, exc_info=True)
+            all_devices = {}
         
         # Get devices with battery but unavailable info
-        all_devices_without_info = get_devices_without_battery_info(self.hass)
+        try:
+            _LOGGER.debug("Sensor: Getting devices without battery info")
+            all_devices_without_info = await get_devices_without_battery_info(self.hass)
+            _LOGGER.debug("Sensor: Retrieved %d devices without battery info", len(all_devices_without_info))
+        except Exception as err:
+            _LOGGER.error("Sensor: Error getting devices without battery info: %s", err, exc_info=True)
+            all_devices_without_info = {}
 
         # Filter out excluded devices and categorize by threshold
         for device_key, device_data in all_devices.items():

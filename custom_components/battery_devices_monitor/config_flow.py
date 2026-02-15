@@ -70,15 +70,17 @@ class BatteryDevicesMonitorConfigFlow(
             errors=errors,
         )
 
-    def _get_battery_devices(self) -> dict[str, str]:
+    async def _get_battery_devices(self) -> dict[str, str]:
         """Get all devices with battery level attribute.
         
         Returns a dictionary where:
         - Key: device_id or entity_id (unique identifier)
         - Value: display name with area (if available)
         """
+        _LOGGER.debug("Config flow: Getting battery devices for device selection")
         try:
-            all_devices = get_all_battery_devices(self.hass)
+            all_devices = await get_all_battery_devices(self.hass)
+            _LOGGER.debug("Config flow: Retrieved %d battery devices", len(all_devices))
             
             # Create list of tuples (device_key, device_data) for sorting
             device_list = []
@@ -112,6 +114,7 @@ class BatteryDevicesMonitorConfigFlow(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the second step - select devices to exclude."""
+        _LOGGER.debug("Config flow: async_step_exclude_devices called with input: %s", user_input is not None)
         if user_input is not None:
             # Check if already configured
             await self.async_set_unique_id(DOMAIN)
@@ -129,7 +132,7 @@ class BatteryDevicesMonitorConfigFlow(
                 options=config_data,
             )
 
-        battery_devices = self._get_battery_devices()
+        battery_devices = await self._get_battery_devices()
 
         data_schema = vol.Schema(
             {
@@ -161,15 +164,17 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    def _get_battery_devices(self) -> dict[str, str]:
+    async def _get_battery_devices(self) -> dict[str, str]:
         """Get all devices with battery level attribute.
         
         Returns a dictionary where:
         - Key: device_id or entity_id (unique identifier)
         - Value: display name with area (if available)
         """
+        _LOGGER.debug("Options flow: Getting battery devices for device selection")
         try:
-            all_devices = get_all_battery_devices(self.hass)
+            all_devices = await get_all_battery_devices(self.hass)
+            _LOGGER.debug("Options flow: Retrieved %d battery devices", len(all_devices))
             
             # Create list of tuples (device_key, device_data) for sorting
             device_list = []
@@ -203,10 +208,11 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
+        _LOGGER.debug("Options flow: async_step_init called with input: %s", user_input is not None)
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        battery_devices = self._get_battery_devices()
+        battery_devices = await self._get_battery_devices()
 
         return self.async_show_form(
             step_id="init",

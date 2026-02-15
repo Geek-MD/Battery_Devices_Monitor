@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.6] - 2026-02-15
+
+### Fixed
+- **Critical fix for HTTP 500 Internal Server Error** that persisted despite previous attempts. The root cause was a sync/async mismatch where synchronous utility functions were calling Home Assistant's async registry methods (`er.async_get()`, `dr.async_get()`, `ar.async_get()`) without proper async context. This caused the event loop to fail silently, resulting in 500 errors when loading the configuration flow.
+  - Converted `get_all_battery_devices()`, `get_device_info()`, and `get_devices_without_battery_info()` to async functions
+  - Updated all call sites in `config_flow.py` and `sensor.py` to properly await these async functions
+  - The integration now correctly operates within Home Assistant's async event loop
+
+### Added
+- Comprehensive debug logging throughout the integration to help diagnose future issues:
+  - Debug logs in config flow steps showing when device selection is initiated
+  - Debug logs in utility functions showing number of devices found
+  - Error logs with full exception traces for all error conditions
+  - All logs properly initialized at module level for optimal performance
+
 ## [1.8.5] - 2026-02-15
 
 ### Fixed
