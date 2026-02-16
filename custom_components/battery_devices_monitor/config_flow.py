@@ -314,6 +314,17 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
             if "base" not in errors:
                 errors["base"] = "cannot_connect"
 
+        # Filter excluded devices to only include those that still exist
+        # This follows the midea_ac_lan pattern to prevent 500 errors
+        # when devices have been removed from Home Assistant
+        valid_excluded = list(
+            set(battery_devices.keys()) & set(current_excluded)
+        )
+        _LOGGER.debug(
+            "Options flow: Filtered excluded devices from %d to %d valid entries",
+            len(current_excluded), len(valid_excluded)
+        )
+
         # Build the form schema
         try:
             data_schema = vol.Schema(
@@ -330,7 +341,7 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Optional(
                         CONF_EXCLUDED_DEVICES,
-                        default=current_excluded,
+                        default=valid_excluded,
                     ): cv.multi_select(battery_devices),
                 }
             )
