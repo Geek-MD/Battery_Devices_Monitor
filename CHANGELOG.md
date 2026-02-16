@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Diagnostics support** following Home Assistant best practices for easier troubleshooting
   - Implements `async_get_config_entry_diagnostics` as per Home Assistant specification
   - Provides comprehensive diagnostic data: configuration details, battery devices with exclusion status, devices without battery info, current sensor state
-  - Added `"diagnostics": ["config_entry"]` to manifest.json
+  - Home Assistant automatically detects diagnostics support through the diagnostics.py file
   - Includes error handling to prevent diagnostics from failing
 - **Enhanced error messages** for better user experience
   - Added "unknown" error: Generic error for unexpected issues
