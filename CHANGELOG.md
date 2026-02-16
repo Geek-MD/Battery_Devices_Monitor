@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-02-16
+
+### Changed
+- **Complete rewrite of config_flow.py from scratch** to eliminate 500 Internal Server Error issues during integration reconfiguration. The new implementation incorporates all lessons learned from previous versions:
+  - Eliminated mixin pattern in favor of module-level helper functions with explicit `hass` parameter, improving type safety and reducing complexity
+  - Centralized battery device fetching logic in `_get_battery_devices_safe()` function with comprehensive error handling that always returns a valid dict (never None)
+  - Centralized schema creation in `_create_threshold_schema()` and `_create_devices_schema()` functions to eliminate code duplication
+  - Improved device filtering in `_create_devices_schema()` to prevent validation errors when excluded devices no longer exist in Home Assistant
+  - Enhanced error handling with granular try-except blocks that catch and log all exceptions with full stack traces
+  - All error paths return functional forms with user-friendly error messages instead of causing 500 errors
+  - Simplified OptionsFlowHandler to remove redundant code and improve maintainability
+  - Proper async/await patterns throughout to ensure correct operation within Home Assistant's event loop
+  - Better logging with debug and info level messages to facilitate troubleshooting
+  - Code structure optimized for readability and future maintenance
+
+### Fixed
+- HTTP 500 error when reconfiguring the integration through the UI. The previous v1.8.11 fixes were incomplete. This complete rewrite addresses all edge cases that could cause 500 errors:
+  - Schema creation failures now have proper fallbacks
+  - Device fetching errors are caught and return empty dict instead of propagating
+  - Config entry access is properly protected with safe defaults
+  - All form rendering paths are guaranteed to succeed even in error conditions
+
 ## [1.8.11] - 2026-02-16
 
 ### Fixed
