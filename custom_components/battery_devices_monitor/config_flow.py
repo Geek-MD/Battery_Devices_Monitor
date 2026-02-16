@@ -220,9 +220,6 @@ class BatteryDevicesMonitorOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
-        # Clean up excluded devices that no longer exist
-        # This is done in __init__ following the midea_ac_lan pattern
-        # to prevent 500 errors when devices are removed from Home Assistant
 
     async def _get_battery_devices(self) -> dict[str, str]:
         """Get all devices with battery level attribute.
