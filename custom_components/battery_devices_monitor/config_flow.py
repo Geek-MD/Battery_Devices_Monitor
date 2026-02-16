@@ -108,6 +108,7 @@ def _create_devices_schema(
     """
     # Filter excluded devices to only include those that still exist
     # This prevents 500 errors when devices have been removed from HA
+    # Convert to list as cv.multi_select() expects a list for default value
     valid_excluded = list(set(devices.keys()) & set(default_excluded))
 
     _LOGGER.debug(
