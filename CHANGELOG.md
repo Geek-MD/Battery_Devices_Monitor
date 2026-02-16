@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.9] - 2026-02-16
+
+### Fixed
+- **Critical fix for persistent 500 Internal Server Error during integration reconfiguration**. Following the proven pattern from the Midea AC LAN integration, the options flow now filters the excluded devices list to only include devices that currently exist in Home Assistant. Previously, if a device was excluded and then removed from Home Assistant, the options flow would fail with a 500 error when trying to display the form because `cv.multi_select()` received a default value containing device IDs that no longer existed in the available devices dictionary.
+  - Implemented device filtering using set intersection: `set(battery_devices.keys()) & set(current_excluded)` following the midea_ac_lan pattern (lines 957-963)
+  - The filtered list (`valid_excluded`) is now used as the default value in the form schema instead of the raw `current_excluded`
+  - Added debug logging to track how many devices were filtered
+  - Added explanatory comments referencing the midea_ac_lan pattern
+  - This ensures the multi-select validator always receives valid device IDs, preventing validation errors and 500 responses
+
 ## [1.8.8] - 2026-02-15
 
 ### Fixed
