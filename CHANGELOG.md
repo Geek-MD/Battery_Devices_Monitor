@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] - 2026-02-16
+
+### Fixed
+- **Critical fix for TypeError when accessing integration options**. The `async_get_options_flow()` method was incorrectly passing `config_entry` as an argument to `OptionsFlowHandler()` constructor, but the parent class `config_entries.OptionsFlow` provides `config_entry` as a property, not via `__init__`. This caused a `TypeError: OptionsFlowHandler() takes no arguments` when users tried to access the integration's options flow.
+  - Removed the `config_entry` argument from `OptionsFlowHandler()` instantiation in `async_get_options_flow()`
+  - The `config_entry` property remains accessible throughout the options flow lifecycle via the parent class's property
+  - This completes the fix started in v1.8.11 and ensures the v1.9.0 rewrite fully follows Home Assistant's OptionsFlow pattern
+
 ## [1.9.0] - 2026-02-16
 
 ### Changed
