@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.8] - 2026-02-15
+
+### Fixed
+- **Resolved persistent 500 Internal Server Error during integration reconfiguration**. The options flow now has robust, granular error handling that prevents cascading failures. Previously, if any exception occurred (e.g., fetching devices, reading config), the error handler itself could fail when trying to access `self.config_entry.options`, causing a 500 error with no logging.
+  - Split error handling into separate try-catch blocks for each operation (read config, fetch devices, build schema, save)
+  - Added safe fallbacks: defaults for config values, empty dict for device list, minimal schema on failure
+  - Each error path logs with `exc_info=True` and returns a functional form with user-friendly error messages
+  - Error messages now properly displayed in both config and options flows with translations (English and Spanish)
+
+### Added
+- **Diagnostics support** following Home Assistant best practices for easier troubleshooting
+  - Implements `async_get_config_entry_diagnostics` as per Home Assistant specification
+  - Provides comprehensive diagnostic data: configuration details, battery devices with exclusion status, devices without battery info, current sensor state
+  - Home Assistant automatically detects diagnostics support through the diagnostics.py file
+  - Includes error handling to prevent diagnostics from failing
+- **Enhanced error messages** for better user experience
+  - Added "unknown" error: Generic error for unexpected issues
+  - Added "cannot_connect" error: Specific error for device fetching issues
+  - Error messages available in English and Spanish translations
+
+### Changed
+- Reviewed TuyaLocal integration patterns to ensure robust error handling follows Home Assistant best practices
+
 ## [1.8.7] - 2026-02-15
 
 ### Fixed
