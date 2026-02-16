@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.10] - 2026-02-16
+
+### Fixed
+- **Critical fix for 500 Internal Server Error during integration configuration**. Home Assistant's config flow system expects specific class names: `FlowHandler` for ConfigFlow and `OptionsFlowHandler` for OptionsFlow. The integration was using custom names (`BatteryDevicesMonitorConfigFlow` and `BatteryDevicesMonitorOptionsFlow`), causing 500 errors when users attempted to configure or modify the integration.
+  - Renamed `BatteryDevicesMonitorConfigFlow` → `FlowHandler`
+  - Renamed `BatteryDevicesMonitorOptionsFlow` → `OptionsFlowHandler`
+  - Updated return type annotation in `async_get_options_flow()` to match Home Assistant conventions
+  - The implementation now follows the standard pattern used by Home Assistant integrations like SonoffLAN
+
 ## [1.8.9] - 2026-02-16
 
 ### Fixed
