@@ -217,10 +217,6 @@ class FlowHandler(
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Battery Devices Monitor."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def _get_battery_devices(self) -> dict[str, str]:
         """Get all devices with battery level attribute.
 

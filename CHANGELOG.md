@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.11] - 2026-02-16
+
+### Fixed
+- **Critical fix for AttributeError in OptionsFlowHandler**. The `OptionsFlowHandler.__init__` method was attempting to set `self.config_entry = config_entry`, but `config_entry` is a read-only property inherited from `config_entries.OptionsFlow` without a setter. This caused an `AttributeError: property 'config_entry' of 'OptionsFlowHandler' object has no setter` when users tried to access the integration's options flow.
+  - Removed the custom `__init__` method from `OptionsFlowHandler`
+  - The parent class `config_entries.OptionsFlow` automatically handles the `config_entry` parameter passed from `async_get_options_flow()`
+  - The `config_entry` property is now properly accessible via the parent class's property getter
+  - This follows the standard Home Assistant pattern where OptionsFlow subclasses don't need to override `__init__`
+
 ## [1.8.10] - 2026-02-16
 
 ### Fixed
