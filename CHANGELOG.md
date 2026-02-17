@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-02-17
+
+### Added
+- **Warning state for the sensor**. The sensor now has three possible states: OK, Warning, and Problem.
+  - **Warning**: When there are no devices in `devices_below_threshold` but there are devices in `devices_without_battery_info`
+  - **Problem**: When there are devices in `devices_below_threshold` (regardless of devices without battery info)
+  - **OK**: When there are no devices with low battery and no devices without battery info
+
+### Changed
+- **devices_without_battery_info_status attribute** now uses "Warning" instead of "Problem" when devices without battery info are present
+- **Icon handling** updated to show `mdi:battery-alert-variant-outline` for Warning state
+
 ## [1.9.1] - 2026-02-16
 
 ### Fixed
