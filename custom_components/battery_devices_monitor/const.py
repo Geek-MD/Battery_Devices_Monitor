@@ -29,6 +29,7 @@ ATTR_DEVICES_WITHOUT_BATTERY_INFO_STATUS: Final = "devices_without_battery_info_
 
 # Sensor states
 STATE_OK: Final = "OK"
+STATE_WARNING: Final = "Warning"
 STATE_PROBLEM: Final = "Problem"
 
 # Sensor name

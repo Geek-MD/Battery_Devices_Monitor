@@ -26,6 +26,7 @@ from .const import (
     EVENT_BATTERY_UNAVAILABLE,
     SENSOR_NAME,
     STATE_OK,
+    STATE_WARNING,
     STATE_PROBLEM,
 )
 from .utils import get_all_battery_devices, get_devices_without_battery_info
@@ -99,6 +100,8 @@ class BatteryMonitorSensor(SensorEntity):
         """Return the icon for the sensor."""
         if self._state == STATE_PROBLEM:
             return "mdi:battery-alert"
+        if self._state == STATE_WARNING:
+            return "mdi:battery-alert-variant-outline"
         return "mdi:battery-check"
 
     async def async_added_to_hass(self) -> None:
@@ -274,14 +277,16 @@ class BatteryMonitorSensor(SensorEntity):
 
         self._previous_unavailable_devices = current_unavailable_devices
 
-        # Update state based on whether any devices have low battery
+        # Update state based on whether any devices have low battery or missing battery info
         if devices_below_threshold:
             self._state = STATE_PROBLEM
+        elif devices_without_info:
+            self._state = STATE_WARNING
         else:
             self._state = STATE_OK
 
         # Update devices_without_battery_info_status based on whether there are devices without battery info
         if devices_without_info:
-            self._devices_without_battery_info_status = STATE_PROBLEM
+            self._devices_without_battery_info_status = STATE_WARNING
         else:
             self._devices_without_battery_info_status = STATE_OK
