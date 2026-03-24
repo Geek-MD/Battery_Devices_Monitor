@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.3] - 2026-03-24
+
+### Fixed
+- **Critical fix: reconfiguring the integration no longer causes Home Assistant to appear to restart**. The `async_reload_entry` function was manually calling `async_unload_entry` and `async_setup_entry` instead of using Home Assistant's proper config entry reload API. The direct call to `async_unload_entry` skipped the HA config entry manager lifecycle, meaning the `entry._on_unload` callbacks (which remove the options update listener) were never triggered. This caused update listeners to accumulate — after N options changes there were N+1 listeners — each triggering a full reload on the next change, leading to exponentially cascading reloads that disrupted Home Assistant.
+  - Changed `async_reload_entry` to call `hass.config_entries.async_reload(entry.entry_id)`, which goes through the proper HA config entry manager lifecycle and correctly triggers `_on_unload` callbacks before re-running setup.
+
 ## [1.9.2] - 2026-02-17
 
 ### Added
