@@ -10,7 +10,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 
-<img width="200" height="200" alt="image" src="https://github.com/Geek-MD/Battery_Devices_Monitor/blob/main/icon.png?raw=true" />
+<img width="200" height="200" alt="image" src="https://github.com/Geek-MD/Battery_Devices_Monitor/blob/main/custom_components/battery_devices_monitor/brand/icon.png?raw=true" />
 
 # Battery Devices Monitor
 A Home Assistant custom integration that monitors all battery-powered devices and provides a single sensor showing "OK" or "Problem" status.
