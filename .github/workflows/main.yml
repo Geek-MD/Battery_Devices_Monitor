@@ -1,0 +1,14 @@
+            - name: Faster HACS Action
+  # You may pin to the exact commit or the version.
+  # uses: TheRealWaldo/faster-hacs-action@976870a428e502b370bca63ee32e599f015d9977
+  uses: TheRealWaldo/faster-hacs-action@v0.0.4
+  with:
+    # Github token for github
+    github-token: # default is ${{ github.token }}
+    # A space separated list of ignored checks, for valid entries see README.md
+    ignore: # optional, default is 
+    # The category of repository
+    category: 
+    # Post a comment to the PR with the result of the checks
+    comment: # optional, default is true
+          
