@@ -7,10 +7,6 @@ on:
         description: 'Branch to check'
         required: true
         default: 'main'
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
 
 jobs:
   hacs:
