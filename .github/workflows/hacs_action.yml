@@ -1,6 +1,16 @@
 name: HACS Action
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to check'
+        required: true
+        default: 'main'
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
   hacs:
