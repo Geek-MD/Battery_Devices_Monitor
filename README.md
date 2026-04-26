@@ -28,7 +28,7 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 - 🔔 Events fired when devices go below threshold
 - 🛠️ Services to get formatted lists of low battery / unavailable devices and to force a rescan
 - 🔄 On-demand rescan service to immediately re-discover battery entities after a device is reconfigured
-- 🌐 Multi-language support (English and Spanish)
+- 🌐 Multi-language support (English, Spanish, Portuguese, and German)
 
 ## Installation
 
