@@ -40,6 +40,13 @@
       "cannot_connect": "Error al obtener dispositivos con batería de Home Assistant. Por favor intente de nuevo."
     }
   },
+  "entity": {
+    "button": {
+      "rescan": {
+        "name": "Reescanear Dispositivos con Batería"
+      }
+    }
+  },
   "services": {
     "get_low_battery_devices": {
       "name": "Obtener Dispositivos con Batería Baja",

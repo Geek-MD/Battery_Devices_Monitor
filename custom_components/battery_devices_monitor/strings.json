@@ -50,6 +50,13 @@
       "cannot_connect": "Failed to fetch battery devices from Home Assistant. Please try again."
     }
   },
+  "entity": {
+    "button": {
+      "rescan": {
+        "name": "Rescan Battery Devices"
+      }
+    }
+  },
   "services": {
     "get_low_battery_devices": {
       "name": "Get Low Battery Devices",
