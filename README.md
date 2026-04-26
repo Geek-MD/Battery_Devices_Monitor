@@ -26,8 +26,9 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 - 📊 Single sensor showing overall battery status ("OK" or "Problem")
 - 📝 Detailed attributes showing all monitored devices
 - 🔔 Events fired when devices go below threshold
-- 🛠️ Service to get formatted list of low battery devices
-- 🌐 Multi-language support (English and Spanish)
+- 🛠️ Services to get formatted lists of low battery / unavailable devices and to force a rescan
+- 🔄 On-demand rescan service to immediately re-discover battery entities after a device is reconfigured
+- 🌐 Multi-language support (English, Spanish, Portuguese, and German)
 
 ## Installation
 
@@ -298,6 +299,39 @@ automation:
             
             All devices with battery issues:
             {{ all_unavailable.result }}
+```
+
+### `battery_devices_monitor.rescan_battery_devices`
+
+Forces an immediate rescan of all battery entities. This is useful after reconfiguring a device whose battery entity ID has changed, causing the sensor to remain in "Warning" state. Instead of waiting for the next automatic update, calling this service triggers a fresh discovery right away.
+
+**Service Data:** None required.
+
+**Example Service Call:**
+```yaml
+service: battery_devices_monitor.rescan_battery_devices
+```
+
+**Example Automation — rescan after a device is reconfigured:**
+```yaml
+automation:
+  - alias: "Rescan Battery Devices After Config Change"
+    trigger:
+      - platform: state
+        entity_id: sensor.battery_monitor_status
+        to: "Warning"
+        for: "00:01:00"
+    action:
+      - service: battery_devices_monitor.rescan_battery_devices
+```
+
+**Example Script — manual rescan button:**
+```yaml
+script:
+  force_battery_rescan:
+    alias: "Force Battery Rescan"
+    sequence:
+      - service: battery_devices_monitor.rescan_battery_devices
 ```
 
 ## Events

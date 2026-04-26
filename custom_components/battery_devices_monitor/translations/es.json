@@ -50,6 +50,21 @@
           "description": "El ID de entidad del sensor de monitor de batería."
         }
       }
+    },
+    "get_devices_without_battery_info": {
+      "name": "Obtener Dispositivos sin Información de Batería",
+      "description": "Devuelve una lista formateada de dispositivos con batería pero cuyo valor es no disponible, desconocido o inválido. El servicio devuelve un diccionario con un campo 'result' que contiene una cadena multilínea con un dispositivo por línea en formato: 'nombre (área)'. Use esto en automatizaciones con response_variable para acceder a la lista formateada.",
+      "fields": {
+        "entity_id": {
+          "name": "ID de Entidad",
+          "description": "El ID de entidad del sensor de monitor de batería."
+        }
+      }
+    },
+    "rescan_battery_devices": {
+      "name": "Reescanear Dispositivos con Batería",
+      "description": "Fuerza un reescaneo inmediato de todas las entidades de batería. Úselo después de reconfigurar un dispositivo cuyo identificador de entidad de batería puede haber cambiado, para actualizar el estado del sensor sin esperar la próxima actualización automática.",
+      "fields": {}
     }
   }
 }

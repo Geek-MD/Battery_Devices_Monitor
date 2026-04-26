@@ -27,3 +27,7 @@ get_devices_without_battery_info:
         entity:
           integration: battery_devices_monitor
           domain: sensor
+
+rescan_battery_devices:
+  name: Rescan Battery Devices
+  description: Forces an immediate rescan of all battery entities. Use this after reconfiguring a device whose battery entity ID may have changed, to update the sensor state without waiting for the next automatic update.

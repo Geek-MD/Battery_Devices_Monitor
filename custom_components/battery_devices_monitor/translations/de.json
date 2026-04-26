@@ -1,0 +1,80 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Batteriegeräte-Monitor konfigurieren",
+        "description": "Legen Sie den Schwellenwert für die Batterieüberwachung fest",
+        "data": {
+          "battery_threshold": "Batterieschwellenwert (%)"
+        },
+        "data_description": {
+          "battery_threshold": "Batteriestand, unterhalb dessen ein Gerät als problematisch gilt (0-100%)"
+        }
+      },
+      "exclude_devices": {
+        "title": "Geräte zum Ausschließen auswählen",
+        "description": "Wählen Sie Batteriegeräte aus, die Sie von der Überwachung ausschließen möchten (optional)",
+        "data": {
+          "excluded_devices": "Ausgeschlossene Geräte"
+        },
+        "data_description": {
+          "excluded_devices": "Wählen Sie Geräte aus, die von der Überwachung ausgeschlossen werden sollen"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Der Batteriegeräte-Monitor ist bereits konfiguriert"
+    },
+    "error": {
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Bitte prüfen Sie die Protokolle für weitere Details.",
+      "cannot_connect": "Batteriegeräte konnten nicht von Home Assistant abgerufen werden. Bitte versuchen Sie es erneut."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Batteriegeräte-Monitor konfigurieren",
+        "description": "Batterieüberwachungs-Schwellenwert und ausgeschlossene Geräte aktualisieren",
+        "data": {
+          "battery_threshold": "Batterieschwellenwert (%)",
+          "excluded_devices": "Ausgeschlossene Geräte"
+        },
+        "data_description": {
+          "battery_threshold": "Batteriestand, unterhalb dessen ein Gerät als problematisch gilt (0-100%)",
+          "excluded_devices": "Wählen Sie Geräte aus, die von der Überwachung ausgeschlossen werden sollen"
+        }
+      }
+    },
+    "error": {
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Bitte prüfen Sie die Protokolle für weitere Details.",
+      "cannot_connect": "Batteriegeräte konnten nicht von Home Assistant abgerufen werden. Bitte versuchen Sie es erneut."
+    }
+  },
+  "services": {
+    "get_low_battery_devices": {
+      "name": "Geräte mit schwacher Batterie abrufen",
+      "description": "Gibt eine formatierte Liste der Geräte zurück, die den Batterieschwellenwert unterschreiten. Der Dienst gibt ein Wörterbuch mit einem 'result'-Feld zurück, das einen mehrzeiligen Text mit einem Gerät pro Zeile im Format 'Name (Bereich) - Batteriestand%' enthält. Verwenden Sie dies in Automatisierungen mit response_variable, um auf die formatierte Liste zuzugreifen.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitäts-ID",
+          "description": "Die Entitäts-ID des Batteriemonitor-Sensors."
+        }
+      }
+    },
+    "get_devices_without_battery_info": {
+      "name": "Geräte ohne Batterieinformationen abrufen",
+      "description": "Gibt eine formatierte Liste der Geräte zurück, die eine Batterie haben, aber deren Wert nicht verfügbar, unbekannt oder ungültig ist. Der Dienst gibt ein Wörterbuch mit einem 'result'-Feld zurück, das einen mehrzeiligen Text mit einem Gerät pro Zeile im Format 'Name (Bereich)' enthält. Verwenden Sie dies in Automatisierungen mit response_variable, um auf die formatierte Liste zuzugreifen.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitäts-ID",
+          "description": "Die Entitäts-ID des Batteriemonitor-Sensors."
+        }
+      }
+    },
+    "rescan_battery_devices": {
+      "name": "Batteriegeräte neu scannen",
+      "description": "Erzwingt einen sofortigen Neuscan aller Batterie-Entitäten. Verwenden Sie dies nach der Neukonfiguration eines Geräts, dessen Batterie-Entitäts-ID sich möglicherweise geändert hat, um den Sensorzustand zu aktualisieren, ohne auf die nächste automatische Aktualisierung zu warten.",
+      "fields": {}
+    }
+  }
+}
