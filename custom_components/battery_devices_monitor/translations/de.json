@@ -50,6 +50,13 @@
       "cannot_connect": "Batteriegeräte konnten nicht von Home Assistant abgerufen werden. Bitte versuchen Sie es erneut."
     }
   },
+  "entity": {
+    "button": {
+      "rescan": {
+        "name": "Batteriegeräte neu scannen"
+      }
+    }
+  },
   "services": {
     "get_low_battery_devices": {
       "name": "Geräte mit schwacher Batterie abrufen",

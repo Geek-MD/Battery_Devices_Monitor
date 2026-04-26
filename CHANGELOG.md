@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.7] - 2026-04-26
+
+### Added
+- **Rescan button on the device control page**: A new `button` entity (`EntityCategory.CONFIG`) is now registered under the same device as the sensor. It appears in the **Configuration** subsection of the device page (`/config/devices/device/<id>`) with a refresh icon, and pressing it triggers an immediate rescan of all battery entities — equivalent to calling the `rescan_battery_devices` service but accessible directly from the UI.
+
 ## [1.9.6] - 2026-04-26
 
 ### Added
