@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from homeassistant.const import Platform
 from homeassistant.core import ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     ATTR_DEVICES_BELOW_THRESHOLD,
@@ -119,6 +120,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             supports_response=SupportsResponse.ONLY,
         )
 
+        # Register service to force a rescan of battery entities
+        async def rescan_battery_devices(call: ServiceCall) -> None:
+            """Force a rescan of all battery entities."""
+            ent_reg = er.async_get(hass)
+            entity_id = ent_reg.async_get_entity_id("sensor", DOMAIN, f"{DOMAIN}_sensor")
+            if entity_id:
+                await hass.services.async_call(
+                    "homeassistant",
+                    "update_entity",
+                    {"entity_id": entity_id},
+                    blocking=True,
+                )
+            else:
+                raise HomeAssistantError(
+                    f"Could not find the {DOMAIN} sensor entity to rescan"
+                )
+
+        hass.services.async_register(
+            DOMAIN,
+            "rescan_battery_devices",
+            rescan_battery_devices,
+        )
+
         _LOGGER.debug("Battery Devices Monitor entry setup completed successfully")
         return True
     except Exception as err:
@@ -139,6 +163,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not hass.data[DOMAIN]:
             hass.services.async_remove(DOMAIN, "get_low_battery_devices")
             hass.services.async_remove(DOMAIN, "get_devices_without_battery_info")
+            hass.services.async_remove(DOMAIN, "rescan_battery_devices")
 
     return unload_ok
 

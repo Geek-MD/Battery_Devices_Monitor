@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.5] - 2026-04-26
+
+### Added
+- **New service `rescan_battery_devices`**: Forces an immediate rescan of all battery entities. This is useful when a device has been reconfigured and its battery entity ID has changed, causing the sensor to remain in "Warning" state. Calling this service triggers a fresh scan and updates the sensor state right away, without having to wait for the next automatic update or restart Home Assistant.
+
 ## [1.9.4] - 2026-03-30
 
 ### Fixed
