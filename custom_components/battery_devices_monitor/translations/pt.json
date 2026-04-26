@@ -1,0 +1,80 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Monitor de Dispositivos com Bateria",
+        "description": "Configure o limite de monitoramento de bateria",
+        "data": {
+          "battery_threshold": "Limite de bateria (%)"
+        },
+        "data_description": {
+          "battery_threshold": "Nível de bateria abaixo do qual um dispositivo é considerado com problema (0-100%)"
+        }
+      },
+      "exclude_devices": {
+        "title": "Selecionar Dispositivos para Excluir",
+        "description": "Selecione os dispositivos com bateria que deseja excluir do monitoramento (opcional)",
+        "data": {
+          "excluded_devices": "Dispositivos excluídos"
+        },
+        "data_description": {
+          "excluded_devices": "Selecione os dispositivos a excluir do monitoramento"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "O Monitor de Dispositivos com Bateria já está configurado"
+    },
+    "error": {
+      "unknown": "Ocorreu um erro inesperado. Por favor, verifique os registros para mais detalhes.",
+      "cannot_connect": "Falha ao obter dispositivos com bateria do Home Assistant. Por favor, tente novamente."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configurar Monitor de Dispositivos com Bateria",
+        "description": "Atualizar o limite de monitoramento de bateria e dispositivos excluídos",
+        "data": {
+          "battery_threshold": "Limite de bateria (%)",
+          "excluded_devices": "Dispositivos excluídos"
+        },
+        "data_description": {
+          "battery_threshold": "Nível de bateria abaixo do qual um dispositivo é considerado com problema (0-100%)",
+          "excluded_devices": "Selecione os dispositivos a excluir do monitoramento"
+        }
+      }
+    },
+    "error": {
+      "unknown": "Ocorreu um erro inesperado. Por favor, verifique os registros para mais detalhes.",
+      "cannot_connect": "Falha ao obter dispositivos com bateria do Home Assistant. Por favor, tente novamente."
+    }
+  },
+  "services": {
+    "get_low_battery_devices": {
+      "name": "Obter Dispositivos com Bateria Fraca",
+      "description": "Retorna uma lista formatada de dispositivos abaixo do limite de bateria. O serviço retorna um dicionário com um campo 'result' contendo uma string multilinha com um dispositivo por linha no formato: 'nome (área) - nível_bateria%'. Use em automatizações com response_variable para acessar a lista formatada.",
+      "fields": {
+        "entity_id": {
+          "name": "ID da Entidade",
+          "description": "O ID da entidade do sensor de monitor de bateria."
+        }
+      }
+    },
+    "get_devices_without_battery_info": {
+      "name": "Obter Dispositivos sem Informação de Bateria",
+      "description": "Retorna uma lista formatada de dispositivos com bateria mas cujo valor está indisponível, desconhecido ou inválido. O serviço retorna um dicionário com um campo 'result' contendo uma string multilinha com um dispositivo por linha no formato: 'nome (área)'. Use em automatizações com response_variable para acessar a lista formatada.",
+      "fields": {
+        "entity_id": {
+          "name": "ID da Entidade",
+          "description": "O ID da entidade do sensor de monitor de bateria."
+        }
+      }
+    },
+    "rescan_battery_devices": {
+      "name": "Reescanear Dispositivos com Bateria",
+      "description": "Força um reescaneamento imediato de todas as entidades de bateria. Use após reconfigurar um dispositivo cujo identificador de entidade de bateria pode ter mudado, para atualizar o estado do sensor sem esperar pela próxima atualização automática.",
+      "fields": {}
+    }
+  }
+}
