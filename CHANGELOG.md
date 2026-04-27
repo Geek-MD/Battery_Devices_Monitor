@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.9] - 2026-04-27
+
+### Fixed
+- **Devices appearing in both `devices_above_threshold` and `devices_without_battery_info`**: A device that already has a valid battery level (and is therefore listed in `devices_above_threshold` or `devices_below_threshold`) is now correctly excluded from `devices_without_battery_info`. The root cause was that some physical devices expose multiple entities — one entity with a readable battery value and another with an unavailable battery attribute — sharing the same `device_id`. The fix skips any device in the "without battery info" pass when the device is already present in the main battery-devices dictionary.
+
 ## [1.9.8] - 2026-04-27
 
 ### Changed
