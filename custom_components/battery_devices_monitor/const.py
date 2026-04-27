@@ -12,6 +12,9 @@ CONF_EXCLUDED_DEVICES: Final = "excluded_devices"
 DEFAULT_BATTERY_THRESHOLD: Final = 20
 DEFAULT_EXCLUDED_DEVICES: Final[list[str]] = []
 
+# Device class value for battery sensors (language-independent HA enum)
+BATTERY_DEVICE_CLASS: Final = "battery"
+
 # Battery attribute names to check (in order of preference)
 BATTERY_ATTRS: Final[list[str]] = [
     "battery_level",  # Home Assistant standard

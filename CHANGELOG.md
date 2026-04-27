@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.8] - 2026-04-27
+
+### Changed
+- **Hybrid battery-entity detection with `device_class: battery` as primary method**: Battery entities are now identified first by their Home Assistant `device_class` attribute (value `"battery"`), which is a language-independent enum defined by HA itself. This makes detection robust against entity-ID or friendly-name changes caused by locale or integration updates.
+  - **Primary**: If `device_class == "battery"`, the entity's state value is used directly as the battery level (0–100 %). This covers all modern integrations that expose a dedicated battery sensor.
+  - **Fallback 1**: Well-known attribute names (`battery_level`, `battery`, `Battery`) are still checked for devices that report battery as an attribute on their main entity (common in Zigbee/Z-Wave devices).
+  - **Fallback 2**: The existing entity-ID heuristic (`"battery" in entity_id`) is kept as a last resort for legacy devices, but is no longer the primary detection mechanism.
+  - Deduplication by `device_id` already present in `get_all_battery_devices` ensures a device is never counted twice even when both a `device_class: battery` sensor and a `battery_level` attribute are present on different entities of the same physical device.
+- Added `BATTERY_DEVICE_CLASS` constant to `const.py` to avoid magic strings and centralise the device-class value used in detection logic.
+
 ## [1.9.7] - 2026-04-26
 
 ### Added

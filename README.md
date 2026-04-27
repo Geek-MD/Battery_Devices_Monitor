@@ -17,7 +17,7 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 
 ## Features
 
-- 🔋 Automatically discovers all devices with battery levels
+- 🔋 Automatically discovers all battery-powered devices using a reliable, language-independent hybrid strategy: `device_class: battery` (primary), well-known battery attributes (fallback 1), and entity-ID heuristic (fallback 2)
 - 🎯 Smart deduplication: each device appears only once, even if it has multiple battery entities
 - 📱 Uses proper device names from Home Assistant's device registry
 - 📍 Area information: device names include their assigned area for easier identification
@@ -75,7 +75,7 @@ After installation and configuration, the integration creates a sensor named `se
 - `excluded_devices`: List of excluded devices. Each entry contains `name` (device name) and `area` (area name or empty string)
 - `total_monitored_devices`: Total count of monitored devices (includes devices with available battery info and devices with unavailable battery info)
 
-**Note**: The integration uses device names from the device registry instead of battery entity names, and automatically deduplicates entries when a device has multiple battery entities. Device names and areas are provided as separate fields for easier programmatic access.
+**Note**: The integration uses a hybrid detection strategy: entities with `device_class: battery` are identified first (language-independent), then entities exposing battery via well-known attributes (`battery_level`, `battery`, `Battery`), and finally a heuristic based on the entity ID. Device names come from the device registry instead of battery entity names, and automatic deduplication by `device_id` ensures each physical device appears only once even when multiple battery-related entities exist for it. Device names and areas are provided as separate fields for easier programmatic access.
 
 **Example attribute structure:**
 ```json

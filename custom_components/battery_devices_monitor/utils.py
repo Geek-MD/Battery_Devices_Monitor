@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
-from .const import BATTERY_ATTRS, DOMAIN, EXCLUDED_ENTITY_DOMAINS
+from .const import BATTERY_ATTRS, BATTERY_DEVICE_CLASS, DOMAIN, EXCLUDED_ENTITY_DOMAINS
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
@@ -41,15 +41,33 @@ def should_exclude_entity(state: State) -> bool:
 def get_battery_level(state: State) -> float | None:
     """Get battery level from entity state or attributes.
 
-    Checks multiple attribute names commonly used for battery level,
-    and also checks the state value if entity_id contains "battery".
-    Returns the battery level as a float, or None if not found.
+    Uses a hybrid strategy in order of priority:
+    1. PRIMARY: ``device_class == "battery"`` → use the state value directly.
+       This is language-independent and the most reliable method.
+    2. FALLBACK 1: Check well-known battery attribute names (``battery_level``,
+       ``battery``, ``Battery``).
+    3. FALLBACK 2: Heuristic – if ``"battery"`` appears in the entity_id and
+       the state is a valid 0-100 number.
+
+    Returns the battery level as a float, or None if not found or unavailable.
     """
     # Exclude entities that should not be monitored
     if should_exclude_entity(state):
         return None
-    
-    # First check for any battery attribute
+
+    # PRIMARY: entity explicitly declared as a battery sensor via device_class
+    if state.attributes.get("device_class") == BATTERY_DEVICE_CLASS:
+        try:
+            level = float(state.state)
+            if 0 <= level <= 100:
+                return level
+        except (ValueError, TypeError):
+            pass
+        # device_class is battery but state is unavailable/unknown – do not
+        # fall through to attribute checks; the entity is already identified.
+        return None
+
+    # FALLBACK 1: Check for any well-known battery attribute
     for attr_name in BATTERY_ATTRS:
         battery_value = state.attributes.get(attr_name)
         if battery_value is not None:
@@ -58,7 +76,7 @@ def get_battery_level(state: State) -> float | None:
             except (ValueError, TypeError):
                 continue
 
-    # Heuristic: If entity_id contains "battery", try to use the state value
+    # FALLBACK 2: Heuristic – entity_id contains "battery"
     if "battery" in state.entity_id.lower():
         try:
             potential_level = float(state.state)
@@ -74,31 +92,37 @@ def get_battery_level(state: State) -> float | None:
 def has_battery_attribute(state: State) -> bool:
     """Check if a state has battery attributes or is a battery entity.
 
-    Returns True if the entity has any battery attribute or if entity_id
-    contains "battery".
+    Uses a hybrid strategy in order of priority:
+    1. PRIMARY: ``device_class == "battery"`` → always considered a battery entity.
+    2. FALLBACK 1: Any well-known battery attribute name is present.
+    3. FALLBACK 2: Heuristic – ``"battery"`` appears in the entity_id.
     """
     # Exclude entities that should not be monitored
     if should_exclude_entity(state):
         return False
-    
-    # Check if any battery attribute exists
+
+    # PRIMARY: entity explicitly declared as a battery sensor via device_class
+    if state.attributes.get("device_class") == BATTERY_DEVICE_CLASS:
+        return True
+
+    # FALLBACK 1: Check if any battery attribute exists
     for attr_name in BATTERY_ATTRS:
         if attr_name in state.attributes:
             return True
-    
-    # Heuristic: If entity_id contains "battery"
+
+    # FALLBACK 2: Heuristic – entity_id contains "battery"
     if "battery" in state.entity_id.lower():
         return True
-    
+
     return False
 
 
 def is_battery_device(state: State) -> bool:
     """Check if a state object represents a battery device.
 
-    Uses both attribute checking and heuristic to identify battery devices.
-    Returns True if the entity has battery attributes or if it has 'battery'
-    in its entity_id and a valid numeric state in the range 0-100.
+    Delegates to ``get_battery_level``; returns True when a valid level is
+    available using the hybrid detection strategy (device_class primary,
+    attributes and entity_id heuristic as fallbacks).
     """
     return get_battery_level(state) is not None
 
