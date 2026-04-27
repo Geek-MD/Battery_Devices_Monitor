@@ -200,6 +200,10 @@ class BatteryMonitorSensor(SensorEntity):
             # Skip if device is excluded
             if device_key in excluded_devices:
                 continue
+
+            # Skip if device already has a valid battery level (already in above/below threshold lists)
+            if device_key in all_devices:
+                continue
             
             # entity_id should always be present
             entity_id = device_data.get("entity_id")
