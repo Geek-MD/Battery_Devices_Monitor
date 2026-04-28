@@ -29,7 +29,7 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 - 🛠️ Services to get formatted lists of low battery / unavailable devices and to force a rescan
 - 🔄 On-demand rescan service to immediately re-discover battery entities after a device is reconfigured
 - 🔘 **Rescan button** on the device control page: a one-click button in the *Configuration* subsection that triggers an immediate rescan without leaving the UI
-- 🌐 Multi-language support (English, Spanish, Portuguese, and German)
+- 🌐 Multi-language support (English, Spanish, French, Portuguese, and German)
 
 ## Installation
 
