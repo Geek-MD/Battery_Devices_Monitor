@@ -1,0 +1,87 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer le Moniteur de Périphériques à Batterie",
+        "description": "Définissez le seuil de surveillance de la batterie",
+        "data": {
+          "battery_threshold": "Seuil de batterie (%)"
+        },
+        "data_description": {
+          "battery_threshold": "Niveau de batterie en dessous duquel un périphérique est considéré comme défaillant (0-100%)"
+        }
+      },
+      "exclude_devices": {
+        "title": "Sélectionner les périphériques à exclure",
+        "description": "Sélectionnez les périphériques à batterie que vous souhaitez exclure de la surveillance (optionnel)",
+        "data": {
+          "excluded_devices": "Périphériques exclus"
+        },
+        "data_description": {
+          "excluded_devices": "Sélectionnez les périphériques à exclure de la surveillance"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Le Moniteur de Périphériques à Batterie est déjà configuré"
+    },
+    "error": {
+      "unknown": "Une erreur inattendue s'est produite. Veuillez consulter les journaux pour plus de détails.",
+      "cannot_connect": "Impossible de récupérer les périphériques à batterie depuis Home Assistant. Veuillez réessayer."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configurer le Moniteur de Périphériques à Batterie",
+        "description": "Mettre à jour le seuil de surveillance de la batterie et les périphériques exclus",
+        "data": {
+          "battery_threshold": "Seuil de batterie (%)",
+          "excluded_devices": "Périphériques exclus"
+        },
+        "data_description": {
+          "battery_threshold": "Niveau de batterie en dessous duquel un périphérique est considéré comme défaillant (0-100%)",
+          "excluded_devices": "Sélectionnez les périphériques à exclure de la surveillance"
+        }
+      }
+    },
+    "error": {
+      "unknown": "Une erreur inattendue s'est produite. Veuillez consulter les journaux pour plus de détails.",
+      "cannot_connect": "Impossible de récupérer les périphériques à batterie depuis Home Assistant. Veuillez réessayer."
+    }
+  },
+  "entity": {
+    "button": {
+      "rescan": {
+        "name": "Réanalyser les périphériques à batterie"
+      }
+    }
+  },
+  "services": {
+    "get_low_battery_devices": {
+      "name": "Obtenir les périphériques à batterie faible",
+      "description": "Retourne une liste formatée des périphériques dont le niveau de batterie est en dessous du seuil. Le service retourne un dictionnaire avec un champ 'result' contenant une chaîne multiligne avec un périphérique par ligne au format : 'nom (zone) - niveau_batterie%'. Utilisez cela dans des automatisations avec response_variable pour accéder à la liste formatée.",
+      "fields": {
+        "entity_id": {
+          "name": "ID d'entité",
+          "description": "L'ID d'entité du capteur de surveillance de batterie."
+        }
+      }
+    },
+    "get_devices_without_battery_info": {
+      "name": "Obtenir les périphériques sans information de batterie",
+      "description": "Retourne une liste formatée des périphériques avec une batterie dont la valeur est indisponible, inconnue ou invalide. Le service retourne un dictionnaire avec un champ 'result' contenant une chaîne multiligne avec un périphérique par ligne au format : 'nom (zone)'. Utilisez cela dans des automatisations avec response_variable pour accéder à la liste formatée.",
+      "fields": {
+        "entity_id": {
+          "name": "ID d'entité",
+          "description": "L'ID d'entité du capteur de surveillance de batterie."
+        }
+      }
+    },
+    "rescan_battery_devices": {
+      "name": "Réanalyser les périphériques à batterie",
+      "description": "Force une réanalyse immédiate de toutes les entités de batterie. Utilisez cela après avoir reconfiguré un périphérique dont l'ID d'entité de batterie a pu changer, afin de mettre à jour l'état du capteur sans attendre la prochaine mise à jour automatique.",
+      "fields": {}
+    }
+  }
+}
