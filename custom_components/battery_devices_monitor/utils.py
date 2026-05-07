@@ -7,7 +7,13 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
-from .const import BATTERY_ATTRS, BATTERY_DEVICE_CLASS, DOMAIN, EXCLUDED_ENTITY_DOMAINS
+from .const import (
+    BATTERY_ATTRS,
+    BATTERY_DEVICE_CLASS,
+    DOMAIN,
+    EXCLUDED_ENTITY_DOMAINS,
+    ZIGBEE_INTEGRATION_DOMAINS,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
@@ -147,13 +153,15 @@ def has_battery_but_unavailable(state: State) -> bool:
 
 async def get_device_info(
     hass: HomeAssistant, state: State
-) -> tuple[str | None, str | None, str | None]:
+) -> tuple[str | None, str | None, str | None, bool, str | None]:
     """Get device information for a battery entity.
 
-    Returns a tuple of (display_name, device_id, area_name).
+    Returns a tuple of (display_name, device_id, area_name, is_zigbee, zigbee_identifier).
     - display_name: The name to display (device name from registry or friendly_name), or None if device belongs to battery_devices_monitor
     - device_id: The device ID if available, or None
     - area_name: The area name if device is assigned to an area, or None
+    - is_zigbee: True if device belongs to a known Zigbee integration
+    - zigbee_identifier: Zigbee identifier (e.g. IEEE) when available
     """
     entity_reg = er.async_get(hass)
     device_reg = dr.async_get(hass)
@@ -162,6 +170,8 @@ async def get_device_info(
     device_name = None
     device_id = None
     area_name = None
+    is_zigbee = False
+    zigbee_identifier = None
 
     # Look up entity in the entity registry
     entity_entry = entity_reg.async_get(state.entity_id)
@@ -174,14 +184,29 @@ async def get_device_info(
             for identifier in device_entry.identifiers:
                 if identifier[0] == DOMAIN:
                     # This device belongs to our integration, return None for all values
-                    return None, None, None
+                    return None, None, None, False, None
+
+            # Detect Zigbee from device identifiers (usually most reliable)
+            for identifier in device_entry.identifiers:
+                if identifier[0] in ZIGBEE_INTEGRATION_DOMAINS:
+                    is_zigbee = True
+                    zigbee_identifier = str(identifier[1])
+                    break
+
+            # Fallback: detect Zigbee from linked config entries
+            if not is_zigbee:
+                for config_entry_id in device_entry.config_entries:
+                    config_entry = hass.config_entries.async_get_entry(config_entry_id)
+                    if config_entry and config_entry.domain in ZIGBEE_INTEGRATION_DOMAINS:
+                        is_zigbee = True
+                        break
 
             # Use device name or name_by_user if available
             device_name = device_entry.name_by_user or device_entry.name
             
             # Exclude devices with "Battery Devices Monitor" in their name
             if device_name and EXCLUDED_NAME_PATTERN in device_name:
-                return None, None, None
+                return None, None, None, False, None
 
             # Get area name if device is assigned to an area
             if device_entry.area_id:
@@ -195,9 +220,9 @@ async def get_device_info(
     
     # Also check the fallback name for "Battery Devices Monitor"
     if device_name and EXCLUDED_NAME_PATTERN in device_name:
-        return None, None, None
+        return None, None, None, False, None
 
-    return device_name, device_id, area_name
+    return device_name, device_id, area_name, is_zigbee, zigbee_identifier
 
 
 async def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
@@ -222,7 +247,7 @@ async def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, An
             continue
 
         try:
-            device_name, device_id, area_name = await get_device_info(hass, state)
+            device_name, device_id, area_name, is_zigbee, zigbee_identifier = await get_device_info(hass, state)
         except Exception as err:
             _LOGGER.error(
                 "Error getting device info for %s: %s",
@@ -245,32 +270,38 @@ async def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, An
             existing_level = battery_devices[unique_key]["battery_level"]
             if battery_level > existing_level:
                 battery_devices[unique_key] = {
+                    "id": unique_key,
                     "name": device_name,
                     "entity_id": state.entity_id,
                     "area": area_name,
                     "battery_level": battery_level,
+                    "is_zigbee": is_zigbee,
+                    "zigbee_identifier": zigbee_identifier,
                 }
         else:
             battery_devices[unique_key] = {
+                "id": unique_key,
                 "name": device_name,
                 "entity_id": state.entity_id,
                 "area": area_name,
                 "battery_level": battery_level,
+                "is_zigbee": is_zigbee,
+                "zigbee_identifier": zigbee_identifier,
             }
 
     _LOGGER.debug("Found %d battery devices", len(battery_devices))
     return battery_devices
 
 
-async def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dict[str, str | None]]:
+async def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
     """Get devices that have battery but value is unavailable.
 
     Returns a dictionary where:
     - Key: device_id (or entity_id if device_id not available)
-    - Value: dict with 'name', 'area', and 'entity_id'
+    - Value: dict with 'id', 'name', 'area', 'battery_level', 'entity_id', and Zigbee metadata
     """
     _LOGGER.debug("Starting get_devices_without_battery_info")
-    devices_without_info: dict[str, dict[str, str | None]] = {}
+    devices_without_info: dict[str, dict[str, Any]] = {}
 
     all_states = hass.states.async_all()
 
@@ -280,7 +311,7 @@ async def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dic
             continue
 
         try:
-            device_name, device_id, area_name = await get_device_info(hass, state)
+            device_name, device_id, area_name, is_zigbee, zigbee_identifier = await get_device_info(hass, state)
         except Exception as err:
             _LOGGER.error(
                 "Error getting device info for %s: %s",
@@ -300,9 +331,13 @@ async def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dic
         # Only add if we haven't already processed this device
         if unique_key not in devices_without_info:
             devices_without_info[unique_key] = {
+                "id": unique_key,
                 "name": device_name,
                 "area": area_name,
+                "battery_level": None,
                 "entity_id": state.entity_id,
+                "is_zigbee": is_zigbee,
+                "zigbee_identifier": zigbee_identifier,
             }
 
     _LOGGER.debug("Found %d devices without battery info", len(devices_without_info))
