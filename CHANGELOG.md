@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.11] - 2026-05-07
+
+### Added
+- **New event `battery_devices_monitor_zigbee_battery_unavailable`**: Fired when a Zigbee device appears in `devices_without_battery_info`. Event payload includes `id`/`device_id`, `entity_id`, `name`, and `zigbee_identifier` (when available), enabling automations such as ZHA Toolkit recovery/rejoin flows.
+
+### Changed
+- **Device structure in sensor lists now includes `id`**: entries in `devices_below_threshold`, `devices_above_threshold`, and `devices_without_battery_info` now expose `name`, `id`, `area`, and `battery_level` (`null` for unavailable battery values).
+- Existing events now include `id`/`device_id` in payloads for improved automation targeting.
+
 ## [1.9.10] - 2026-04-28
 
 ### Added

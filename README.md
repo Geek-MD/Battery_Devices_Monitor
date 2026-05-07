@@ -68,9 +68,9 @@ After installation and configuration, the integration creates a sensor named `se
 - **Problem**: One or more devices have battery levels below the threshold (battery < threshold)
 
 ### Attributes
-- `devices_below_threshold`: List of devices with battery **below** threshold (battery < threshold). Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
-- `devices_above_threshold`: List of devices with battery **at or above** threshold (battery >= threshold). Each entry contains `name` (device name), `area` (area name or empty string), and `battery_level` (percentage)
-- `devices_without_battery_info`: List of devices with battery but whose value is unavailable. Each entry contains `name` (device name) and `area` (area name or empty string)
+- `devices_below_threshold`: List of devices with battery **below** threshold (battery < threshold). Each entry contains `name`, `id`, `area`, and `battery_level`
+- `devices_above_threshold`: List of devices with battery **at or above** threshold (battery >= threshold). Each entry contains `name`, `id`, `area`, and `battery_level`
+- `devices_without_battery_info`: List of devices with battery but whose value is unavailable. Each entry contains `name`, `id`, `area`, and `battery_level` (`null` when unavailable)
 - `devices_without_battery_info_status`: Status showing "OK" when no devices have unavailable battery info, or "Warning" when one or more devices have unavailable battery info
 - `excluded_devices`: List of excluded devices. Each entry contains `name` (device name) and `area` (area name or empty string)
 - `total_monitored_devices`: Total count of monitored devices (includes devices with available battery info and devices with unavailable battery info)
@@ -81,16 +81,16 @@ After installation and configuration, the integration creates a sensor named `se
 ```json
 {
   "devices_below_threshold": [
-    {"name": "Temperature Sensor", "area": "Kitchen", "battery_level": 15},
-    {"name": "Remote Control", "area": "Living Room", "battery_level": 18}
+    {"name": "Temperature Sensor", "id": "abc123", "area": "Kitchen", "battery_level": 15},
+    {"name": "Remote Control", "id": "def456", "area": "Living Room", "battery_level": 18}
   ],
   "devices_above_threshold": [
-    {"name": "Motion Sensor", "area": "Bedroom", "battery_level": 85},
-    {"name": "Door Sensor", "area": "Hallway", "battery_level": 92}
+    {"name": "Motion Sensor", "id": "ghi789", "area": "Bedroom", "battery_level": 85},
+    {"name": "Door Sensor", "id": "jkl012", "area": "Hallway", "battery_level": 92}
   ],
   "devices_without_battery_info": [
-    {"name": "Leak Sensor", "area": "Bathroom"},
-    {"name": "Window Sensor", "area": "Bedroom"}
+    {"name": "Leak Sensor", "id": "mno345", "area": "Bathroom", "battery_level": null},
+    {"name": "Window Sensor", "id": "pqr678", "area": "Bedroom", "battery_level": null}
   ],
   "devices_without_battery_info_status": "Warning",
   "excluded_devices": [
@@ -344,6 +344,7 @@ The integration fires the following events:
 Fired when a device's battery goes below the configured threshold. The event data includes:
 
 - `entity_id`: The entity ID of the device
+- `id` / `device_id`: Home Assistant device ID (or entity_id fallback)
 - `name`: The friendly name of the device (with area if available)
 - `battery_level`: The current battery level
 - `threshold`: The configured threshold that was crossed
@@ -351,6 +352,8 @@ Fired when a device's battery goes below the configured threshold. The event dat
 Example event data:
 ```json
 {
+  "id": "abc123",
+  "device_id": "abc123",
   "entity_id": "sensor.my_device_battery",
   "name": "My Device (Living Room)",
   "battery_level": 15,
@@ -363,11 +366,14 @@ Example event data:
 Fired when a device's battery value becomes unavailable (unavailable, unknown, or cannot be read). This is useful for detecting devices that are offline or having communication issues. The event data includes:
 
 - `entity_id`: The entity ID of the device
+- `id` / `device_id`: Home Assistant device ID (or entity_id fallback)
 - `name`: The friendly name of the device (with area if available)
 
 Example event data:
 ```json
 {
+  "id": "abc123",
+  "device_id": "abc123",
   "entity_id": "sensor.my_device_battery",
   "name": "My Device (Living Room)"
 }
@@ -388,6 +394,15 @@ automation:
             Device {{ trigger.event.data.name }} battery status is unavailable.
             The device might be offline or having communication issues.
 ```
+
+### `battery_devices_monitor_zigbee_battery_unavailable`
+
+Fired when a Zigbee device appears in `devices_without_battery_info`. This event is intended for automations like rejoin/recovery flows (e.g., ZHA Toolkit). The event data includes:
+
+- `entity_id`: The entity ID associated with the unavailable battery state
+- `id` / `device_id`: Home Assistant device ID (or entity_id fallback)
+- `name`: The friendly name of the device (with area if available)
+- `zigbee_identifier`: Zigbee identifier when available (for example IEEE)
 
 ## Development
 
@@ -422,4 +437,3 @@ For issues and feature requests, please use the [GitHub issue tracker](https://g
 💻 **Proudly developed with GitHub Copilot** 🚀
 
 </div>
-
