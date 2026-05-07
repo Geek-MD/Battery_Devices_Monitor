@@ -170,10 +170,8 @@ class BatteryMonitorSensor(SensorEntity):
             if device_key in excluded_devices:
                 # Create display info for excluded devices
                 excluded_devices_info.append({
-                    "id": device_data["id"],
                     "name": device_data["name"],
                     "area": device_data.get("area", ""),
-                    "battery_level": round(device_data["battery_level"]),
                 })
                 continue
 
@@ -289,14 +287,14 @@ class BatteryMonitorSensor(SensorEntity):
         current_unavailable_devices = set(unavailable_devices_event_data.keys())
         new_unavailable_devices = current_unavailable_devices - self._previous_unavailable_devices
 
-        for entity_id in new_unavailable_devices:
-            device_info = unavailable_devices_event_data[entity_id]
+        for device_id in new_unavailable_devices:
+            device_info = unavailable_devices_event_data[device_id]
             self.hass.bus.async_fire(
                 EVENT_BATTERY_UNAVAILABLE,
                 {
                     "id": device_info["id"],
                     "device_id": device_info["id"],
-                    "entity_id": entity_id,
+                    "entity_id": device_info["entity_id"],
                     "name": device_info["name"],
                 },
             )
