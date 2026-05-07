@@ -177,7 +177,6 @@ class BatteryMonitorSensor(SensorEntity):
 
             # Create display info with name, area, and battery level
             device_info = {
-                "id": device_data["id"],
                 "name": device_data["name"],
                 "area": device_data.get("area", ""),
                 "battery_level": round(device_data["battery_level"]),
@@ -217,7 +216,6 @@ class BatteryMonitorSensor(SensorEntity):
             
             # For display in attributes (without entity_id)
             devices_without_info.append({
-                "id": device_data["id"],
                 "name": device_data["name"],
                 "area": device_data.get("area", ""),
                 "battery_level": device_data.get("battery_level"),

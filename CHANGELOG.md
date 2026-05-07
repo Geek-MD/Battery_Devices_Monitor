@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.12] - 2026-05-07
+
+### Changed
+- **Sensor list entries no longer include `id`**: entries in `devices_below_threshold`, `devices_above_threshold`, and `devices_without_battery_info` now expose only `name`, `area`, and `battery_level` (`null` for unavailable battery values), reverting the structure change introduced in v1.9.11. The `entity_id` (e.g. `sensor.puerta_bateria`) required by ZHA Toolkit's Handle Join action remains exclusively in the event payloads (`battery_devices_monitor_battery_unavailable` and `battery_devices_monitor_zigbee_battery_unavailable`).
+
 ## [1.9.11] - 2026-05-07
 
 ### Added
