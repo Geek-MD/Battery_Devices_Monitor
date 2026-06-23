@@ -61,6 +61,7 @@ The integration can be configured through the Home Assistant UI:
 ## Usage
 
 After installation and configuration, the integration creates a sensor named `sensor.battery_monitor_status` with:
+This entity ID is kept stable for both upgrades and clean installations.
 
 ### States
 - **OK**: All monitored devices have battery levels at or above the threshold and all have available battery info

@@ -53,7 +53,8 @@ async def async_setup_entry(
 class BatteryMonitorSensor(SensorEntity):
     """Representation of a Battery Monitor sensor."""
 
-    _attr_has_entity_name = True
+    # Keep legacy entity_id on fresh installs (sensor.battery_monitor_status)
+    _attr_has_entity_name = False
     _attr_name = SENSOR_NAME
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
