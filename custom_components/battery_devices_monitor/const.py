@@ -41,7 +41,14 @@ SENSOR_NAME: Final = "Battery Monitor Status"
 # Events
 EVENT_BATTERY_LOW: Final = "battery_devices_monitor_low_battery"
 EVENT_BATTERY_UNAVAILABLE: Final = "battery_devices_monitor_battery_unavailable"
-EVENT_ZIGBEE_BATTERY_UNAVAILABLE: Final = "battery_devices_monitor_zigbee_battery_unavailable"
+EVENT_ZIGBEE_BATTERY_UNAVAILABLE: Final = (
+    "battery_devices_monitor_zigbee_battery_unavailable"
+)
+
+# Actions
+SERVICE_GET_LOW_BATTERY_DEVICES: Final = "get_low_battery_devices"
+SERVICE_GET_DEVICES_WITHOUT_BATTERY_INFO: Final = "get_devices_without_battery_info"
+SERVICE_RESCAN_BATTERY_DEVICES: Final = "rescan_battery_devices"
 
 # Zigbee integration domains in Home Assistant
 ZIGBEE_INTEGRATION_DOMAINS: Final[set[str]] = {"zha", "deconz", "zigbee2mqtt"}
@@ -50,6 +57,6 @@ ZIGBEE_INTEGRATION_DOMAINS: Final[set[str]] = {"zha", "deconz", "zigbee2mqtt"}
 # These entities should not be monitored even if they have "battery" in their entity_id
 EXCLUDED_ENTITY_DOMAINS: Final[list[str]] = [
     "automation",  # Automations
-    "scene",       # Scenes
-    "script",      # Scripts
+    "scene",  # Scenes
+    "script",  # Scripts
 ]

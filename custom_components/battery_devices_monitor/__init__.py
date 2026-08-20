@@ -2,172 +2,140 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
-from homeassistant.const import Platform
+import voluptuous as vol
+
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import ServiceCall, ServiceResponse, SupportsResponse
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import entity_registry as er
+from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     ATTR_DEVICES_BELOW_THRESHOLD,
     ATTR_DEVICES_WITHOUT_BATTERY_INFO,
     DOMAIN,
+    SERVICE_GET_DEVICES_WITHOUT_BATTERY_INFO,
+    SERVICE_GET_LOW_BATTERY_DEVICES,
+    SERVICE_RESCAN_BATTERY_DEVICES,
 )
+from .coordinator import BatteryMonitorCoordinator
 
 if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
+    from homeassistant.core import HomeAssistant, State
 
-_LOGGER = logging.getLogger(__name__)
+type BatteryMonitorConfigEntry = ConfigEntry[BatteryMonitorCoordinator]
 
 PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR]
+_ENTITY_SERVICE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+def _monitor_state(hass: HomeAssistant, call: ServiceCall) -> State:
+    """Return and validate the monitor sensor selected by an action call."""
+    entity_id = call.data[ATTR_ENTITY_ID]
+    state = hass.states.get(entity_id)
+    if state is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="entity_not_found",
+            translation_placeholders={"entity_id": entity_id},
+        )
+    return state
+
+
+async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
+    """Register integration actions independently of config entries."""
+
+    async def get_low_battery_devices(call: ServiceCall) -> ServiceResponse:
+        """Return a formatted list of devices below the threshold."""
+        devices = _monitor_state(hass, call).attributes.get(
+            ATTR_DEVICES_BELOW_THRESHOLD, []
+        )
+        output = []
+        for device in devices:
+            name = device.get("name", "Unknown")
+            area = device.get("area")
+            level = round(device.get("battery_level", 0))
+            label = f"{name} ({area})" if area else name
+            output.append(f"{label} - {level}%")
+        return {"result": "\n".join(output)}
+
+    async def get_devices_without_battery_info(
+        call: ServiceCall,
+    ) -> ServiceResponse:
+        """Return a formatted list of devices without a percentage."""
+        devices = _monitor_state(hass, call).attributes.get(
+            ATTR_DEVICES_WITHOUT_BATTERY_INFO, []
+        )
+        output = []
+        for device in devices:
+            name = device.get("name", "Unknown")
+            area = device.get("area")
+            output.append(f"{name} ({area})" if area else name)
+        return {"result": "\n".join(output)}
+
+    async def rescan_battery_devices(_call: ServiceCall) -> None:
+        """Force all loaded entries to discover battery sources again."""
+        entries = [
+            entry
+            for entry in hass.config_entries.async_entries(DOMAIN)
+            if entry.state is ConfigEntryState.LOADED
+        ]
+        if not entries:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="not_configured",
+            )
+        for entry in entries:
+            await entry.runtime_data.async_request_refresh()
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_LOW_BATTERY_DEVICES,
+        get_low_battery_devices,
+        schema=_ENTITY_SERVICE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_DEVICES_WITHOUT_BATTERY_INFO,
+        get_devices_without_battery_info,
+        schema=_ENTITY_SERVICE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RESCAN_BATTERY_DEVICES,
+        rescan_battery_devices,
+    )
+    return True
+
+
+async def async_setup_entry(
+    hass: HomeAssistant, entry: BatteryMonitorConfigEntry
+) -> bool:
     """Set up Battery Devices Monitor from a config entry."""
-    _LOGGER.debug("Setting up Battery Devices Monitor entry: %s", entry.entry_id)
-    try:
-        hass.data.setdefault(DOMAIN, {})
-        hass.data[DOMAIN][entry.entry_id] = entry.data
+    coordinator = BatteryMonitorCoordinator(hass, entry)
+    await coordinator.async_config_entry_first_refresh()
+    entry.runtime_data = coordinator
+    coordinator.async_start()
 
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-        entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-
-        # Register service
-        async def get_low_battery_devices(call: ServiceCall) -> ServiceResponse:
-            """Get formatted list of low battery devices."""
-            entity_id = call.data.get("entity_id")
-
-            if not entity_id:
-                raise HomeAssistantError("entity_id is required")
-
-            state = hass.states.get(entity_id)
-            if not state:
-                raise HomeAssistantError(f"Entity {entity_id} not found")
-
-            devices_below = state.attributes.get(ATTR_DEVICES_BELOW_THRESHOLD, [])
-
-            # Format output: "name (area) - battery_level%\n"
-            output_lines = []
-            for device in devices_below:
-                name = device.get("name", "Unknown")
-                area = device.get("area", "")
-                battery_level = device.get("battery_level", 0)
-
-                # Round battery level to integer
-                battery_level_int = round(battery_level)
-
-                # Format line
-                if area:
-                    line = f"{name} ({area}) - {battery_level_int}%"
-                else:
-                    line = f"{name} - {battery_level_int}%"
-
-                output_lines.append(line)
-
-            # Join with newlines
-            formatted_output = "\n".join(output_lines)
-
-            return {"result": formatted_output}
-
-        hass.services.async_register(
-            DOMAIN,
-            "get_low_battery_devices",
-            get_low_battery_devices,
-            supports_response=SupportsResponse.ONLY,
-        )
-
-        # Register service for devices without battery info
-        async def get_devices_without_battery_info(call: ServiceCall) -> ServiceResponse:
-            """Get formatted list of devices without battery info."""
-            entity_id = call.data.get("entity_id")
-
-            if not entity_id:
-                raise HomeAssistantError("entity_id is required")
-
-            state = hass.states.get(entity_id)
-            if not state:
-                raise HomeAssistantError(f"Entity {entity_id} not found")
-
-            devices_without_info = state.attributes.get(ATTR_DEVICES_WITHOUT_BATTERY_INFO, [])
-
-            # Format output: "name (area)\n"
-            output_lines = []
-            for device in devices_without_info:
-                name = device.get("name", "Unknown")
-                area = device.get("area", "")
-
-                # Format line
-                if area:
-                    line = f"{name} ({area})"
-                else:
-                    line = name
-
-                output_lines.append(line)
-
-            # Join with newlines
-            formatted_output = "\n".join(output_lines)
-
-            return {"result": formatted_output}
-
-        hass.services.async_register(
-            DOMAIN,
-            "get_devices_without_battery_info",
-            get_devices_without_battery_info,
-            supports_response=SupportsResponse.ONLY,
-        )
-
-        # Register service to force a rescan of battery entities
-        async def rescan_battery_devices(call: ServiceCall) -> None:
-            """Force a rescan of all battery entities."""
-            ent_reg = er.async_get(hass)
-            entity_id = ent_reg.async_get_entity_id("sensor", DOMAIN, f"{DOMAIN}_sensor")
-            if entity_id:
-                await hass.services.async_call(
-                    "homeassistant",
-                    "update_entity",
-                    {"entity_id": entity_id},
-                    blocking=True,
-                )
-            else:
-                raise HomeAssistantError(
-                    f"Could not find the {DOMAIN} sensor entity to rescan"
-                )
-
-        hass.services.async_register(
-            DOMAIN,
-            "rescan_battery_devices",
-            rescan_battery_devices,
-        )
-
-        _LOGGER.debug("Battery Devices Monitor entry setup completed successfully")
-        return True
-    except Exception as err:
-        _LOGGER.error(
-            "Failed to set up Battery Devices Monitor: %s",
-            err,
-            exc_info=True,
-        )
-        return False
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: BatteryMonitorConfigEntry
+) -> bool:
     """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-        # Unregister services when last entry is unloaded
-        if not hass.data[DOMAIN]:
-            hass.services.async_remove(DOMAIN, "get_low_battery_devices")
-            hass.services.async_remove(DOMAIN, "get_devices_without_battery_info")
-            hass.services.async_remove(DOMAIN, "rescan_battery_devices")
-
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
+async def async_reload_entry(
+    hass: HomeAssistant, entry: BatteryMonitorConfigEntry
+) -> None:
+    """Reload a config entry after its options change."""
     await hass.config_entries.async_reload(entry.entry_id)

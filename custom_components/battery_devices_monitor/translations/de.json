@@ -8,7 +8,7 @@
           "battery_threshold": "Batterieschwellenwert (%)"
         },
         "data_description": {
-          "battery_threshold": "Batteriestand, unterhalb dessen ein Gerät als problematisch gilt (0-100%)"
+          "battery_threshold": "Batteriestand, unterhalb dessen ein Gerät als problematisch gilt (1-100%)"
         }
       },
       "exclude_devices": {
@@ -40,7 +40,7 @@
           "excluded_devices": "Ausgeschlossene Geräte"
         },
         "data_description": {
-          "battery_threshold": "Batteriestand, unterhalb dessen ein Gerät als problematisch gilt (0-100%)",
+          "battery_threshold": "Batteriestand, unterhalb dessen ein Gerät als problematisch gilt (1-100%)",
           "excluded_devices": "Wählen Sie Geräte aus, die von der Überwachung ausgeschlossen werden sollen"
         }
       }
@@ -55,6 +55,14 @@
       "rescan": {
         "name": "Batteriegeräte neu scannen"
       }
+    }
+  },
+  "exceptions": {
+    "entity_not_found": {
+      "message": "Entität {entity_id} wurde nicht gefunden."
+    },
+    "not_configured": {
+      "message": "Battery Devices Monitor ist nicht konfiguriert."
     }
   },
   "services": {

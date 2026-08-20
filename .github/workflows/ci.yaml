@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r requirements_test.txt
 
       - name: Run Ruff
         run: |
@@ -59,13 +59,18 @@ jobs:
             ruff check . --fix || true
             echo "Running final ruff check..."
             ruff check .
+            ruff format --check custom_components tests
           else
             echo "Running ruff check without --fix"
             ruff check .
+            ruff format --check custom_components tests
           fi
 
       - name: Run Mypy
         run: mypy --config-file mypy.ini
+
+      - name: Run tests
+        run: pytest -q
 
       - name: Run Hassfest
         uses: home-assistant/actions/hassfest@master
