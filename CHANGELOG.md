@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-08-20
+
+### Added
+- **Cross-integration physical-device deduplication**: battery sources are grouped by Home Assistant `device_id`, normalized hardware connections/identifiers, and conservative unambiguous name-and-area matches across distinct integrations. This covers devices exposed simultaneously through integrations such as August/Legrand or Ring/MQTT when sufficient identity metadata is available.
+- **Deterministic source priority**: standards-compliant percentage sensors are preferred over battery attributes, legacy entity-ID heuristics, and binary `battery_low`/status entities. Equally reliable percentage sources use the lowest value to avoid hiding a low battery.
+- **Runtime tests** for percentage-versus-low selection, cross-integration grouping, invalid values, Home Assistant setup, stable entity ID, event behavior, and reactive updates.
+- Diagnostics now include the selected entity, all grouped source entities, source integrations, and source count for each physical device.
+
+### Changed
+- Replaced full-state rescans from the sensor entity with an event-driven `DataUpdateCoordinator` stored in `ConfigEntry.runtime_data`.
+- Battery and registry changes now trigger an immediate coordinated refresh without periodic polling.
+- Service actions are registered in `async_setup`, validated with schemas, and return translated validation errors.
+- Exclusion choices include unavailable battery devices and migrate legacy source IDs to the canonical grouped device ID.
+- Battery values must be finite percentages between 0 and 100; voltage, health, and numeric `battery_low` entities are no longer misreported as percentages.
+- Minimum supported Home Assistant version is now 2024.4.0.
+
+### Fixed
+- **Automatic updates**: replaced the ineffective `async_track_state_change_event("*")` listener, which treated `*` as a literal entity ID and did not receive battery state changes.
+- Devices with both percentage and unavailable/low-status entities no longer appear twice.
+- A second config-flow attempt now aborts as already configured instead of being converted to an unknown error.
+- Diagnostics now resolve the actual stable `sensor.battery_monitor_status` entity through the entity registry.
+- Added the missing Spanish translation for the exclusion step and translated service-action validation errors in every bundled language.
+
 ## [1.9.13] - 2026-06-23
 
 ### Fixed

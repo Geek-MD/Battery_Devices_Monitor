@@ -8,7 +8,7 @@
           "battery_threshold": "Limite de bateria (%)"
         },
         "data_description": {
-          "battery_threshold": "Nível de bateria abaixo do qual um dispositivo é considerado com problema (0-100%)"
+          "battery_threshold": "Nível de bateria abaixo do qual um dispositivo é considerado com problema (1-100%)"
         }
       },
       "exclude_devices": {
@@ -40,7 +40,7 @@
           "excluded_devices": "Dispositivos excluídos"
         },
         "data_description": {
-          "battery_threshold": "Nível de bateria abaixo do qual um dispositivo é considerado com problema (0-100%)",
+          "battery_threshold": "Nível de bateria abaixo do qual um dispositivo é considerado com problema (1-100%)",
           "excluded_devices": "Selecione os dispositivos a excluir do monitoramento"
         }
       }
@@ -55,6 +55,14 @@
       "rescan": {
         "name": "Reescanear Dispositivos com Bateria"
       }
+    }
+  },
+  "exceptions": {
+    "entity_not_found": {
+      "message": "A entidade {entity_id} não foi encontrada."
+    },
+    "not_configured": {
+      "message": "O Battery Devices Monitor não está configurado."
     }
   },
   "services": {

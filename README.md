@@ -13,12 +13,13 @@
 <img width="200" height="200" alt="image" src="https://github.com/Geek-MD/Battery_Devices_Monitor/blob/main/custom_components/battery_devices_monitor/brand/logo.png?raw=true" />
 
 # Battery Devices Monitor
-A Home Assistant custom integration that monitors all battery-powered devices and provides a single sensor showing "OK" or "Problem" status.
+A Home Assistant custom integration that monitors all battery-powered devices and provides a single sensor showing "OK", "Warning", or "Problem" status.
 
 ## Features
 
 - 🔋 Automatically discovers all battery-powered devices using a reliable, language-independent hybrid strategy: `device_class: battery` (primary), well-known battery attributes (fallback 1), and entity-ID heuristic (fallback 2)
-- 🎯 Smart deduplication: each device appears only once, even if it has multiple battery entities
+- 🎯 Physical-device deduplication within one integration and across integrations such as August/Legrand or Ring/MQTT
+- ✅ Percentage-first source selection: a `%` battery sensor is preferred over `battery_low`, status, voltage, and legacy heuristic entities
 - 📱 Uses proper device names from Home Assistant's device registry
 - 📍 Area information: device names include their assigned area for easier identification
 - ⚙️ Configurable battery threshold via UI
@@ -32,6 +33,8 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 - 🌐 Multi-language support (English, Spanish, French, Portuguese, and German)
 
 ## Installation
+
+Requires Home Assistant 2024.4.0 or newer.
 
 ### Manual Installation
 
@@ -68,29 +71,41 @@ After installation and configuration, the integration creates a sensor named `se
 - **Problem**: One or more devices have battery levels below the threshold (battery < threshold)
 
 ### Attributes
-- `devices_below_threshold`: List of devices with battery **below** threshold (battery < threshold). Each entry contains `name`, `id`, `area`, and `battery_level`
-- `devices_above_threshold`: List of devices with battery **at or above** threshold (battery >= threshold). Each entry contains `name`, `id`, `area`, and `battery_level`
-- `devices_without_battery_info`: List of devices with battery but whose value is unavailable. Each entry contains `name`, `id`, `area`, and `battery_level` (`null` when unavailable)
+- `devices_below_threshold`: List of devices with battery **below** threshold (battery < threshold). Each entry contains `name`, `area`, and `battery_level`
+- `devices_above_threshold`: List of devices with battery **at or above** threshold (battery >= threshold). Each entry contains `name`, `area`, and `battery_level`
+- `devices_without_battery_info`: List of devices with battery but whose value is unavailable. Each entry contains `name`, `area`, and `battery_level` (`null` when unavailable)
 - `devices_without_battery_info_status`: Status showing "OK" when no devices have unavailable battery info, or "Warning" when one or more devices have unavailable battery info
 - `excluded_devices`: List of excluded devices. Each entry contains `name` (device name) and `area` (area name or empty string)
 - `total_monitored_devices`: Total count of monitored devices (includes devices with available battery info and devices with unavailable battery info)
 
-**Note**: The integration uses a hybrid detection strategy: entities with `device_class: battery` are identified first (language-independent), then entities exposing battery via well-known attributes (`battery_level`, `battery`, `Battery`), and finally a heuristic based on the entity ID. Device names come from the device registry instead of battery entity names, and automatic deduplication by `device_id` ensures each physical device appears only once even when multiple battery-related entities exist for it. Device names and areas are provided as separate fields for easier programmatic access.
+### Deduplication and source priority
+
+The integration first groups entities that share a Home Assistant `device_id`. It then detects the same physical device exposed by different integrations using matching normalized hardware connections/identifiers. As a conservative fallback, devices from distinct integrations are grouped when their device name and assigned area match exactly and the match is unambiguous.
+
+Within each physical-device group, the selected source order is:
+
+1. A `sensor` with `device_class: battery` and unit `%`.
+2. Another valid `device_class: battery` percentage.
+3. A valid percentage from a known battery attribute.
+4. A valid legacy battery entity-ID heuristic.
+5. A binary `battery_low`/status entity only when no percentage exists; it is listed as unavailable because it cannot be compared with the configured threshold.
+
+All percentages must be finite and between 0 and 100. If equally reliable percentage sources disagree, the lowest value is used so that a low battery is not hidden. Source entities and integrations are included in downloaded diagnostics, while the public sensor attributes continue to show one entry per physical device.
 
 **Example attribute structure:**
 ```json
 {
   "devices_below_threshold": [
-    {"name": "Temperature Sensor", "id": "abc123", "area": "Kitchen", "battery_level": 15},
-    {"name": "Remote Control", "id": "def456", "area": "Living Room", "battery_level": 18}
+    {"name": "Temperature Sensor", "area": "Kitchen", "battery_level": 15},
+    {"name": "Remote Control", "area": "Living Room", "battery_level": 18}
   ],
   "devices_above_threshold": [
-    {"name": "Motion Sensor", "id": "ghi789", "area": "Bedroom", "battery_level": 85},
-    {"name": "Door Sensor", "id": "jkl012", "area": "Hallway", "battery_level": 92}
+    {"name": "Motion Sensor", "area": "Bedroom", "battery_level": 85},
+    {"name": "Door Sensor", "area": "Hallway", "battery_level": 92}
   ],
   "devices_without_battery_info": [
-    {"name": "Leak Sensor", "id": "mno345", "area": "Bathroom", "battery_level": null},
-    {"name": "Window Sensor", "id": "pqr678", "area": "Bedroom", "battery_level": null}
+    {"name": "Leak Sensor", "area": "Bathroom", "battery_level": null},
+    {"name": "Window Sensor", "area": "Bedroom", "battery_level": null}
   ],
   "devices_without_battery_info_status": "Warning",
   "excluded_devices": [
@@ -406,7 +421,13 @@ Fired when a Zigbee device appears in `devices_without_battery_info`. This event
 
 ## Development
 
-This integration monitors all entities in Home Assistant that have a `battery_level` attribute or have "battery" in their entity ID. It uses the Home Assistant device and entity registries to properly associate battery entities with their parent devices, ensuring each device appears only once in the list. The integration automatically updates when any device battery level changes.
+The event-driven coordinator performs one discovery pass at startup and refreshes when a battery source or the entity/device registry changes. It stores runtime state in `ConfigEntry.runtime_data`, groups physical devices before classifying their battery level, and does not poll Home Assistant periodically.
+
+### Known limitations
+
+- Cross-integration grouping is only automatic when Home Assistant exposes a shared hardware identifier/connection or an unambiguous exact name-and-area match.
+- Devices without registry metadata and with different entity names cannot be safely identified as the same physical device. They remain separate to avoid merging two real devices accidentally.
+- Binary low/normal battery entities do not provide a percentage and therefore cannot be evaluated against a numeric threshold when they are the only source.
 
 ### Code Quality
 
@@ -415,6 +436,7 @@ This project maintains high code quality standards:
 - ✅ **hassfest**: Home Assistant manifest validation
 - ✅ **ruff**: Python linting and formatting
 - ✅ **mypy**: Static type checking
+- ✅ **pytest**: Source selection, cross-integration deduplication, setup, and reactive update tests
 
 All checks run automatically via GitHub Actions on every commit.
 

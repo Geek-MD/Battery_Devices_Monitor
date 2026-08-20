@@ -10,6 +10,16 @@
         "data_description": {
           "battery_threshold": "Nivel de batería por debajo del cual un dispositivo se considera con problema (1-100%)"
         }
+      },
+      "exclude_devices": {
+        "title": "Seleccionar dispositivos para excluir",
+        "description": "Seleccione opcionalmente los dispositivos con batería que no desea monitorear",
+        "data": {
+          "excluded_devices": "Dispositivos excluidos"
+        },
+        "data_description": {
+          "excluded_devices": "Seleccione los dispositivos que se excluirán del monitoreo"
+        }
       }
     },
     "abort": {
@@ -45,6 +55,14 @@
       "rescan": {
         "name": "Reescanear Dispositivos con Batería"
       }
+    }
+  },
+  "exceptions": {
+    "entity_not_found": {
+      "message": "No se encontró la entidad {entity_id}."
+    },
+    "not_configured": {
+      "message": "El Monitor de Dispositivos con Batería no está configurado."
     }
   },
   "services": {

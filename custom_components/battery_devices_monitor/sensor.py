@@ -1,14 +1,12 @@
-"""Sensor platform for Battery Devices Monitor integration."""
+"""Sensor platform for Battery Devices Monitor."""
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     ATTR_DEVICES_ABOVE_THRESHOLD,
@@ -27,39 +25,37 @@ from .const import (
     EVENT_ZIGBEE_BATTERY_UNAVAILABLE,
     SENSOR_NAME,
     STATE_OK,
-    STATE_WARNING,
     STATE_PROBLEM,
+    STATE_WARNING,
 )
-from .utils import get_all_battery_devices, get_devices_without_battery_info
+from .coordinator import BatteryMonitorCoordinator
 
 if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-_LOGGER = logging.getLogger(__name__)
+    from . import BatteryMonitorConfigEntry
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    _hass: HomeAssistant,
+    config_entry: BatteryMonitorConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Battery Devices Monitor sensor."""
-    async_add_entities(
-        [BatteryMonitorSensor(hass, config_entry)], update_before_add=True
-    )
+    async_add_entities([BatteryMonitorSensor(config_entry)])
 
 
-class BatteryMonitorSensor(SensorEntity):
-    """Representation of a Battery Monitor sensor."""
+class BatteryMonitorSensor(CoordinatorEntity[BatteryMonitorCoordinator], SensorEntity):
+    """Represent the deduplicated overall battery status."""
 
-    # Keep legacy entity_id on fresh installs (sensor.battery_monitor_status)
+    # Keep the established sensor.battery_monitor_status entity ID.
     _attr_has_entity_name = False
     _attr_name = SENSOR_NAME
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    def __init__(self, config_entry: BatteryMonitorConfigEntry) -> None:
         """Initialize the sensor."""
-        self.hass = hass
+        super().__init__(config_entry.runtime_data)
         self._config_entry = config_entry
         self._attr_unique_id = f"{DOMAIN}_sensor"
         self._state = STATE_OK
@@ -72,265 +68,195 @@ class BatteryMonitorSensor(SensorEntity):
         self._previous_low_devices: set[str] = set()
         self._previous_unavailable_devices: set[str] = set()
         self._previous_unavailable_zigbee_devices: set[str] = set()
-
-        # Device info to allow area assignment
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, config_entry.entry_id)},
             name="Battery Devices Monitor",
             manufacturer="Geek-MD",
             model="Battery Monitor",
         )
+        self._process_coordinator_data(fire_events=False)
 
     @property
-    def state(self) -> str:
-        """Return the state of the sensor."""
+    def native_value(self) -> str:
+        """Return the overall battery state."""
         return self._state
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes."""
+        """Return deduplicated device lists."""
         return {
             ATTR_DEVICES_BELOW_THRESHOLD: self._devices_below_threshold,
             ATTR_DEVICES_ABOVE_THRESHOLD: self._devices_above_threshold,
             ATTR_TOTAL_MONITORED_DEVICES: self._total_devices,
             ATTR_EXCLUDED_DEVICES: self._excluded_devices,
             ATTR_DEVICES_WITHOUT_BATTERY_INFO: self._devices_without_battery_info,
-            ATTR_DEVICES_WITHOUT_BATTERY_INFO_STATUS: self._devices_without_battery_info_status,
+            ATTR_DEVICES_WITHOUT_BATTERY_INFO_STATUS: (
+                self._devices_without_battery_info_status
+            ),
         }
 
     @property
     def icon(self) -> str:
-        """Return the icon for the sensor."""
+        """Return an icon matching the overall state."""
         if self._state == STATE_PROBLEM:
             return "mdi:battery-alert"
         if self._state == STATE_WARNING:
             return "mdi:battery-alert-variant-outline"
         return "mdi:battery-check"
 
-    async def async_added_to_hass(self) -> None:
-        """Register callbacks when entity is added."""
-        await super().async_added_to_hass()
-
-        # Track all state changes to detect battery entities
-        self.async_on_remove(
-            async_track_state_change_event(
-                self.hass,
-                "*",
-                self._handle_state_change,
+    @staticmethod
+    def _display_device(device: dict[str, Any]) -> dict[str, Any]:
+        """Return the stable public device representation."""
+        return {
+            "name": device["name"],
+            "area": device.get("area") or "",
+            "battery_level": (
+                round(device["battery_level"])
+                if device["battery_level"] is not None
+                else None
             ),
-        )
+        }
 
-        # Initial update
-        await self.async_update()
-
-    @callback
-    def _handle_state_change(self, event: Event) -> None:
-        """Handle state changes of battery entities."""
-        # Schedule an update when any state changes
-        self.async_schedule_update_ha_state(force_refresh=True)
-
-    async def async_update(self) -> None:
-        """Update the sensor state."""
-        _LOGGER.debug("Sensor: Starting async_update")
-        threshold = self._config_entry.options.get(
-            CONF_BATTERY_THRESHOLD,
-            DEFAULT_BATTERY_THRESHOLD,
-        )
-        excluded_devices = self._config_entry.options.get(
-            CONF_EXCLUDED_DEVICES,
-            DEFAULT_EXCLUDED_DEVICES,
-        )
-
-        devices_below_threshold = []
-        devices_above_threshold = []
-        devices_below_info = {}
-        excluded_devices_info = []
-        devices_without_info = []
-
-        # Get all battery devices using shared utility
-        try:
-            _LOGGER.debug("Sensor: Getting all battery devices")
-            all_devices = await get_all_battery_devices(self.hass)
-            _LOGGER.debug("Sensor: Retrieved %d battery devices", len(all_devices))
-        except Exception as err:
-            _LOGGER.error("Sensor: Error getting battery devices: %s", err, exc_info=True)
-            all_devices = {}
-        
-        # Get devices with battery but unavailable info
-        try:
-            _LOGGER.debug("Sensor: Getting devices without battery info")
-            all_devices_without_info = await get_devices_without_battery_info(self.hass)
-            _LOGGER.debug("Sensor: Retrieved %d devices without battery info", len(all_devices_without_info))
-        except Exception as err:
-            _LOGGER.error("Sensor: Error getting devices without battery info: %s", err, exc_info=True)
-            all_devices_without_info = {}
-
-        # Filter out excluded devices and categorize by threshold
-        for device_key, device_data in all_devices.items():
-            # Check if device is excluded
-            if device_key in excluded_devices:
-                # Create display info for excluded devices
-                excluded_devices_info.append({
-                    "name": device_data["name"],
-                    "area": device_data.get("area", ""),
-                })
-                continue
-
-            # Create display info with name, area, and battery level
-            device_info = {
-                "name": device_data["name"],
-                "area": device_data.get("area", ""),
-                "battery_level": round(device_data["battery_level"]),
+    def _is_excluded(self, device: dict[str, Any], excluded: set[str]) -> bool:
+        """Support exclusions created before and after cross-source grouping."""
+        return bool(
+            excluded
+            & {
+                device["id"],
+                *device.get("source_ids", []),
+                *device.get("source_entity_ids", []),
             }
-
-            if device_data["battery_level"] < threshold:
-                devices_below_threshold.append(device_info)
-                # For event firing, use display name with area
-                display_name = device_data["name"]
-                if device_data.get("area"):
-                    display_name = f"{device_data['name']} ({device_data['area']})"
-                devices_below_info[device_data["entity_id"]] = {
-                    "id": device_data["id"],
-                    "name": display_name,
-                    "battery_level": round(device_data["battery_level"]),
-                    "entity_id": device_data["entity_id"],
-                }
-            else:
-                devices_above_threshold.append(device_info)
-
-        # Process devices without battery info (also filter excluded)
-        unavailable_devices_event_data = {}
-        unavailable_zigbee_devices_event_data = {}
-        for device_key, device_data in all_devices_without_info.items():
-            # Skip if device is excluded
-            if device_key in excluded_devices:
-                continue
-
-            # Skip if device already has a valid battery level (already in above/below threshold lists)
-            if device_key in all_devices:
-                continue
-            
-            # entity_id should always be present
-            entity_id = device_data.get("entity_id")
-            if not entity_id:
-                continue
-            
-            # For display in attributes (without entity_id)
-            devices_without_info.append({
-                "name": device_data["name"],
-                "area": device_data.get("area", ""),
-                "battery_level": device_data.get("battery_level"),
-            })
-            
-            # For event firing, use display name with area
-            display_name = device_data["name"]
-            if device_data.get("area"):
-                display_name = f"{device_data['name']} ({device_data['area']})"
-            unavailable_devices_event_data[device_data["id"]] = {
-                "id": device_data["id"],
-                "name": display_name,
-                "entity_id": entity_id,
-            }
-
-            if device_data.get("is_zigbee"):
-                unavailable_zigbee_devices_event_data[device_data["id"]] = {
-                    "id": device_data["id"],
-                    "entity_id": entity_id,
-                    "name": display_name,
-                    "zigbee_identifier": device_data.get("zigbee_identifier"),
-                }
-
-        # Sort devices_below_threshold: first by battery_level (ascending), then by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
-        self._devices_below_threshold = sorted(
-            devices_below_threshold, key=lambda x: (x["battery_level"], x["name"].lower(), (x["area"] or "").lower())
         )
-        # Sort devices_above_threshold: first by battery_level (ascending), then by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
-        self._devices_above_threshold = sorted(
-            devices_above_threshold, key=lambda x: (x["battery_level"], x["name"].lower(), (x["area"] or "").lower())
-        )
-        # Sort excluded_devices: first by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
-        self._excluded_devices = sorted(
-            excluded_devices_info, key=lambda x: (x["name"].lower(), (x["area"] or "").lower())
-        )
-        # Sort devices_without_battery_info: first by name (A-Z, case-insensitive), then by area (A-Z, case-insensitive)
-        # Note: name should never be None (has fallback), but type system requires the check
-        self._devices_without_battery_info = sorted(
-            devices_without_info, key=lambda x: ((x["name"] or "").lower(), (x["area"] or "").lower())
-        )
-        # Include devices without battery info in total count
-        self._total_devices = len(devices_below_threshold) + len(
-            devices_above_threshold
-        ) + len(devices_without_info)
 
-        # Fire events for newly detected low battery devices
-        current_low_devices = set(devices_below_info.keys())
-        new_low_devices = current_low_devices - self._previous_low_devices
-
-        for entity_id in new_low_devices:
-            device_info = devices_below_info[entity_id]
+    def _fire_events(
+        self,
+        low_devices: dict[str, dict[str, Any]],
+        unavailable_devices: dict[str, dict[str, Any]],
+        threshold: int,
+    ) -> None:
+        """Fire one event per newly problematic physical device."""
+        current_low = set(low_devices)
+        for device_id in current_low - self._previous_low_devices:
+            device = low_devices[device_id]
             self.hass.bus.async_fire(
                 EVENT_BATTERY_LOW,
                 {
-                    "id": device_info["id"],
-                    "device_id": device_info["id"],
-                    "entity_id": entity_id,
-                    "name": device_info["name"],
-                    "battery_level": device_info["battery_level"],
+                    "id": device_id,
+                    "device_id": device_id,
+                    "entity_id": device["entity_id"],
+                    "name": device["display_name"],
+                    "battery_level": round(device["battery_level"]),
                     "threshold": threshold,
                 },
             )
+        self._previous_low_devices = current_low
 
-        self._previous_low_devices = current_low_devices
-
-        # Fire events for newly detected unavailable battery devices
-        current_unavailable_devices = set(unavailable_devices_event_data.keys())
-        new_unavailable_devices = current_unavailable_devices - self._previous_unavailable_devices
-
-        for device_id in new_unavailable_devices:
-            device_info = unavailable_devices_event_data[device_id]
+        current_unavailable = set(unavailable_devices)
+        for device_id in current_unavailable - self._previous_unavailable_devices:
+            device = unavailable_devices[device_id]
             self.hass.bus.async_fire(
                 EVENT_BATTERY_UNAVAILABLE,
                 {
-                    "id": device_info["id"],
-                    "device_id": device_info["id"],
-                    "entity_id": device_info["entity_id"],
-                    "name": device_info["name"],
+                    "id": device_id,
+                    "device_id": device_id,
+                    "entity_id": device["entity_id"],
+                    "name": device["display_name"],
                 },
             )
+        self._previous_unavailable_devices = current_unavailable
 
-        self._previous_unavailable_devices = current_unavailable_devices
-
-        # Fire events for newly detected Zigbee devices with unavailable battery
-        current_unavailable_zigbee_devices = set(unavailable_zigbee_devices_event_data.keys())
-        new_unavailable_zigbee_devices = (
-            current_unavailable_zigbee_devices - self._previous_unavailable_zigbee_devices
-        )
-
-        for device_id in new_unavailable_zigbee_devices:
-            device_info = unavailable_zigbee_devices_event_data[device_id]
+        zigbee_devices = {
+            device_id: device
+            for device_id, device in unavailable_devices.items()
+            if device.get("is_zigbee")
+        }
+        current_zigbee = set(zigbee_devices)
+        for device_id in current_zigbee - self._previous_unavailable_zigbee_devices:
+            device = zigbee_devices[device_id]
             self.hass.bus.async_fire(
                 EVENT_ZIGBEE_BATTERY_UNAVAILABLE,
                 {
-                    "id": device_info["id"],
-                    "device_id": device_info["id"],
-                    "entity_id": device_info["entity_id"],
-                    "name": device_info["name"],
-                    "zigbee_identifier": device_info["zigbee_identifier"],
+                    "id": device_id,
+                    "device_id": device_id,
+                    "entity_id": device["entity_id"],
+                    "name": device["display_name"],
+                    "zigbee_identifier": device.get("zigbee_identifier"),
                 },
             )
+        self._previous_unavailable_zigbee_devices = current_zigbee
 
-        self._previous_unavailable_zigbee_devices = current_unavailable_zigbee_devices
+    def _process_coordinator_data(self, *, fire_events: bool) -> None:
+        """Categorize a deduplicated coordinator snapshot."""
+        threshold = self._config_entry.options.get(
+            CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD
+        )
+        excluded = set(
+            self._config_entry.options.get(
+                CONF_EXCLUDED_DEVICES, DEFAULT_EXCLUDED_DEVICES
+            )
+        )
+        below: list[dict[str, Any]] = []
+        above: list[dict[str, Any]] = []
+        unavailable: list[dict[str, Any]] = []
+        excluded_devices: list[dict[str, Any]] = []
+        low_event_data: dict[str, dict[str, Any]] = {}
+        unavailable_event_data: dict[str, dict[str, Any]] = {}
 
-        # Update state based on whether any devices have low battery or missing battery info
-        if devices_below_threshold:
-            self._state = STATE_PROBLEM
-        elif devices_without_info:
-            self._state = STATE_WARNING
+        for device_id, device in self.coordinator.data.items():
+            if self._is_excluded(device, excluded):
+                excluded_devices.append(
+                    {"name": device["name"], "area": device.get("area") or ""}
+                )
+                continue
+
+            display_name = device["name"]
+            if device.get("area"):
+                display_name = f"{display_name} ({device['area']})"
+            event_device = {**device, "display_name": display_name}
+
+            if device["battery_level"] is None:
+                unavailable.append(self._display_device(device))
+                unavailable_event_data[device_id] = event_device
+            elif device["battery_level"] < threshold:
+                below.append(self._display_device(device))
+                low_event_data[device_id] = event_device
+            else:
+                above.append(self._display_device(device))
+
+        def battery_sort(item: dict[str, Any]) -> tuple[float, str, str]:
+            return (
+                item["battery_level"],
+                item["name"].casefold(),
+                item["area"].casefold(),
+            )
+
+        def name_sort(item: dict[str, Any]) -> tuple[str, str]:
+            return item["name"].casefold(), item["area"].casefold()
+
+        self._devices_below_threshold = sorted(below, key=battery_sort)
+        self._devices_above_threshold = sorted(above, key=battery_sort)
+        self._devices_without_battery_info = sorted(unavailable, key=name_sort)
+        self._excluded_devices = sorted(excluded_devices, key=name_sort)
+        self._total_devices = len(below) + len(above) + len(unavailable)
+        self._devices_without_battery_info_status = (
+            STATE_WARNING if unavailable else STATE_OK
+        )
+        self._state = (
+            STATE_PROBLEM if below else STATE_WARNING if unavailable else STATE_OK
+        )
+
+        if fire_events:
+            self._fire_events(low_event_data, unavailable_event_data, threshold)
         else:
-            self._state = STATE_OK
+            self._previous_low_devices = set(low_event_data)
+            self._previous_unavailable_devices = set(unavailable_event_data)
+            self._previous_unavailable_zigbee_devices = {
+                device_id
+                for device_id, device in unavailable_event_data.items()
+                if device.get("is_zigbee")
+            }
 
-        # Update devices_without_battery_info_status based on whether there are devices without battery info
-        if devices_without_info:
-            self._devices_without_battery_info_status = STATE_WARNING
-        else:
-            self._devices_without_battery_info_status = STATE_OK
+    def _handle_coordinator_update(self) -> None:
+        """Handle a battery-source update."""
+        self._process_coordinator_data(fire_events=True)
+        super()._handle_coordinator_update()

@@ -18,25 +18,25 @@ from .const import (
     DEFAULT_EXCLUDED_DEVICES,
     DOMAIN,
 )
-from .utils import get_all_battery_devices
+from .utils import discover_battery_devices
 
 if TYPE_CHECKING:
-    from homeassistant.data_entry_flow import FlowResult
+    from homeassistant.config_entries import ConfigFlowResult
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def _get_battery_devices_safe(hass: HomeAssistant) -> dict[str, str]:
+async def _get_battery_devices_safe(
+    hass: HomeAssistant,
+) -> tuple[dict[str, str], dict[str, str]]:
     """Get all battery devices with comprehensive error handling.
 
-    Returns a dictionary where:
-    - Key: device_id or entity_id (unique identifier)
-    - Value: display name with area (if available)
+    Returns selectable canonical devices plus a legacy-source-to-device map.
 
-    Returns empty dict on any error to prevent 500 errors.
+    Returns two empty dictionaries on error to keep the flow usable.
     """
     try:
-        all_devices = await get_all_battery_devices(hass)
+        all_devices = await discover_battery_devices(hass)
         _LOGGER.debug("Retrieved %d battery devices", len(all_devices))
 
         # Sort by name (case-insensitive), then by area (case-insensitive)
@@ -50,13 +50,16 @@ async def _get_battery_devices_safe(hass: HomeAssistant) -> dict[str, str]:
 
         # Create display dict for the multi-select
         battery_devices = {}
+        source_to_device: dict[str, str] = {}
         for device_key, device_data in device_list:
             display_name = device_data["name"]
             if device_data.get("area"):
                 display_name = f"{device_data['name']} ({device_data['area']})"
             battery_devices[device_key] = display_name
+            for source_id in device_data.get("source_ids", []):
+                source_to_device[source_id] = device_key
 
-        return battery_devices
+        return battery_devices, source_to_device
 
     except Exception as err:
         _LOGGER.error(
@@ -65,14 +68,14 @@ async def _get_battery_devices_safe(hass: HomeAssistant) -> dict[str, str]:
             exc_info=True,
         )
         # Return empty dict to prevent 500 error
-        return {}
+        return {}, {}
 
 
 def _create_threshold_schema(default_value: int) -> vol.Schema:
     """Create schema for battery threshold configuration.
 
     Args:
-        default_value: Default threshold value (0-100)
+        default_value: Default threshold value (1-100)
 
     Returns:
         A voluptuous Schema object for threshold configuration
@@ -84,7 +87,7 @@ def _create_threshold_schema(default_value: int) -> vol.Schema:
                 default=default_value,
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=0,
+                    min=1,
                     max=100,
                     mode=selector.NumberSelectorMode.BOX,
                 ),
@@ -95,6 +98,7 @@ def _create_threshold_schema(default_value: int) -> vol.Schema:
 
 def _create_devices_schema(
     devices: dict[str, str],
+    source_to_device: dict[str, str],
     default_excluded: list[str],
 ) -> vol.Schema:
     """Create schema for device exclusion configuration.
@@ -109,7 +113,10 @@ def _create_devices_schema(
     # Filter excluded devices to only include those that still exist
     # This prevents 500 errors when devices have been removed from HA
     # Convert to list as cv.multi_select() expects a list for default value
-    valid_excluded = list(set(devices.keys()) & set(default_excluded))
+    canonical_excluded = {
+        source_to_device.get(device_id, device_id) for device_id in default_excluded
+    }
+    valid_excluded = sorted(set(devices) & canonical_excluded)
 
     _LOGGER.debug(
         "Filtered excluded devices from %d to %d valid entries",
@@ -129,7 +136,7 @@ def _create_devices_schema(
 
 class FlowHandler(
     config_entries.ConfigFlow,
-    domain=DOMAIN,  # type: ignore[call-arg]
+    domain=DOMAIN,
 ):
     """Handle a config flow for Battery Devices Monitor."""
 
@@ -141,7 +148,7 @@ class FlowHandler(
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step - configure threshold."""
         _LOGGER.debug("Config flow step 'user' started")
         errors: dict[str, str] = {}
@@ -181,56 +188,32 @@ class FlowHandler(
 
     async def async_step_exclude_devices(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the second step - select devices to exclude."""
         _LOGGER.debug("Config flow step 'exclude_devices' started")
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            try:
-                # Check if already configured
-                await self.async_set_unique_id(DOMAIN)
-                self._abort_if_unique_id_configured()
-
-                # Create config entry with options
-                config_data = {
-                    CONF_BATTERY_THRESHOLD: self._threshold,
-                    CONF_EXCLUDED_DEVICES: user_input.get(
-                        CONF_EXCLUDED_DEVICES, []
-                    ),
-                }
-
-                _LOGGER.info(
-                    "Creating config entry: threshold=%s, excluded_count=%d",
-                    self._threshold,
-                    len(config_data[CONF_EXCLUDED_DEVICES]),
-                )
-
-                return self.async_create_entry(
-                    title="Battery Devices Monitor",
-                    data={},
-                    options=config_data,
-                )
-
-            except Exception as err:
-                _LOGGER.error(
-                    "Error creating config entry: %s",
-                    err,
-                    exc_info=True,
-                )
-                errors["base"] = "unknown"
+            await self.async_set_unique_id(DOMAIN)
+            self._abort_if_unique_id_configured()
+            config_data = {
+                CONF_BATTERY_THRESHOLD: self._threshold,
+                CONF_EXCLUDED_DEVICES: user_input.get(CONF_EXCLUDED_DEVICES, []),
+            }
+            return self.async_create_entry(
+                title="Battery Devices Monitor",
+                data={},
+                options=config_data,
+            )
 
         # Fetch battery devices for the form
-        battery_devices = await _get_battery_devices_safe(self.hass)
-
-        if not battery_devices and not errors:
-            _LOGGER.warning("No battery devices found")
-            errors["base"] = "cannot_connect"
+        battery_devices, source_to_device = await _get_battery_devices_safe(self.hass)
 
         # Build the form schema
         try:
             data_schema = _create_devices_schema(
                 battery_devices,
+                source_to_device,
                 DEFAULT_EXCLUDED_DEVICES,
             )
         except Exception as err:
@@ -242,6 +225,7 @@ class FlowHandler(
             errors["base"] = "unknown"
             # Fallback to empty schema
             data_schema = _create_devices_schema(
+                {},
                 {},
                 DEFAULT_EXCLUDED_DEVICES,
             )
@@ -266,23 +250,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Manage the options."""
         _LOGGER.debug("Options flow step 'init' started")
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            try:
-                _LOGGER.info("Updating options: %s", user_input)
-                return self.async_create_entry(title="", data=user_input)
-
-            except Exception as err:
-                _LOGGER.error(
-                    "Error saving options: %s",
-                    err,
-                    exc_info=True,
-                )
-                errors["base"] = "unknown"
+            return self.async_create_entry(title="", data=user_input)
 
         # Get current configuration values with safe fallbacks
         current_threshold = self.config_entry.options.get(
@@ -293,11 +267,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
 
         # Fetch battery devices
-        battery_devices = await _get_battery_devices_safe(self.hass)
-
-        if not battery_devices and not errors:
-            _LOGGER.warning("No battery devices found in options flow")
-            errors["base"] = "cannot_connect"
+        battery_devices, source_to_device = await _get_battery_devices_safe(self.hass)
 
         # Build the form schema with current values
         try:
@@ -306,6 +276,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Create devices schema
             devices_schema = _create_devices_schema(
                 battery_devices,
+                source_to_device,
                 current_excluded,
             )
 
@@ -332,7 +303,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         default=DEFAULT_BATTERY_THRESHOLD,
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
-                            min=0,
+                            min=1,
                             max=100,
                             mode=selector.NumberSelectorMode.BOX,
                         ),

@@ -1,11 +1,19 @@
-"""Utility functions for Battery Devices Monitor integration."""
+"""Battery discovery, source selection, and physical-device deduplication."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
+import math
+import re
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
+from homeassistant.const import ATTR_DEVICE_CLASS, ATTR_UNIT_OF_MEASUREMENT, PERCENTAGE
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+)
 
 from .const import (
     BATTERY_ATTRS,
@@ -16,329 +24,436 @@ from .const import (
 )
 
 if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant, State
+    from collections.abc import Iterable
 
-# Name pattern to exclude from monitoring
-EXCLUDED_NAME_PATTERN = "Battery Devices Monitor"
+    from homeassistant.core import HomeAssistant, State
 
 _LOGGER = logging.getLogger(__name__)
 
+_LOW_BATTERY_MARKERS = ("battery_low", "low_battery", "battery_status")
+_NON_PERCENTAGE_MARKERS = ("battery_voltage", "battery_volts", "battery_health")
+_UNAVAILABLE_STATES = {"", "none", "unknown", "unavailable"}
+_BINARY_BATTERY_STATES = {"0", "1", "false", "low", "normal", "off", "on", "true"}
+_IDENTIFIER_NORMALIZER = re.compile(r"[^a-z0-9]")
+
+
+@dataclass(slots=True, frozen=True)
+class BatterySource:
+    """One entity or attribute that reports battery information."""
+
+    entity_id: str
+    device_id: str | None
+    name: str
+    area: str | None
+    integration: str
+    level: float | None
+    priority: int
+    is_zigbee: bool
+    zigbee_identifier: str | None
+    hardware_keys: frozenset[str]
+
+    @property
+    def source_id(self) -> str:
+        """Return the stable identifier used by exclusions and grouping."""
+        return self.device_id or self.entity_id
+
+
+class _DisjointSet:
+    """Small union-find implementation used to group battery sources."""
+
+    def __init__(self, size: int) -> None:
+        self._parent = list(range(size))
+
+    def find(self, item: int) -> int:
+        """Return the representative for an item."""
+        while self._parent[item] != item:
+            self._parent[item] = self._parent[self._parent[item]]
+            item = self._parent[item]
+        return item
+
+    def union(self, left: int, right: int) -> None:
+        """Join two groups."""
+        left_root = self.find(left)
+        right_root = self.find(right)
+        if left_root != right_root:
+            self._parent[right_root] = left_root
+
 
 def should_exclude_entity(state: State) -> bool:
-    """Check if an entity should be excluded from battery monitoring.
-    
-    Returns True if the entity should be excluded, False otherwise.
-    Excludes:
-    - Entities from the battery_devices_monitor domain itself
-    - Entities from excluded domains (automation, scene, script)
-    """
-    # Exclude entities from battery_devices_monitor domain (the monitor itself)
-    if state.entity_id.startswith(f"sensor.{DOMAIN}"):
-        return True
-    
-    # Exclude entities from specific domains
-    entity_domain = state.entity_id.split(".")[0] if "." in state.entity_id else ""
-    if entity_domain in EXCLUDED_ENTITY_DOMAINS:
-        return True
-    
-    return False
+    """Return whether an entity must not be considered a battery source."""
+    entity_domain = state.entity_id.partition(".")[0]
+    return (
+        state.entity_id.startswith(f"sensor.{DOMAIN}")
+        or entity_domain in EXCLUDED_ENTITY_DOMAINS
+    )
+
+
+def _valid_percentage(value: Any) -> float | None:
+    """Convert a value to a finite percentage in the inclusive 0..100 range."""
+    if isinstance(value, bool):
+        return None
+    try:
+        percentage = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(percentage) or not 0 <= percentage <= 100:
+        return None
+    return percentage
+
+
+def _battery_reading(state: State) -> tuple[bool, float | None, int]:
+    """Return candidate status, percentage, and semantic source priority."""
+    if should_exclude_entity(state):
+        return False, None, 0
+
+    entity_domain = state.entity_id.partition(".")[0]
+    entity_id_lower = state.entity_id.lower()
+    device_class = state.attributes.get(ATTR_DEVICE_CLASS)
+    unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+
+    # A binary battery entity means low/normal, never a percentage.
+    if entity_domain == "binary_sensor" and device_class == BATTERY_DEVICE_CLASS:
+        return True, None, 10
+
+    if device_class == BATTERY_DEVICE_CLASS:
+        level = _valid_percentage(state.state)
+        if level is None:
+            return True, None, 450
+        priority = 500 if entity_domain == "sensor" and unit == PERCENTAGE else 450
+        return True, level, priority
+
+    battery_attribute_found = False
+    for attribute_name in BATTERY_ATTRS:
+        if attribute_name not in state.attributes:
+            continue
+        battery_attribute_found = True
+        level = _valid_percentage(state.attributes[attribute_name])
+        if level is not None:
+            return True, level, 350
+
+    if battery_attribute_found:
+        return True, None, 300
+
+    if "battery" not in entity_id_lower:
+        return False, None, 0
+
+    normalized_state = str(state.state).strip().lower()
+    if any(marker in entity_id_lower for marker in _LOW_BATTERY_MARKERS):
+        return True, None, 10
+    if any(marker in entity_id_lower for marker in _NON_PERCENTAGE_MARKERS):
+        return False, None, 0
+    if normalized_state in _UNAVAILABLE_STATES:
+        return True, None, 100
+    if normalized_state in _BINARY_BATTERY_STATES and unit != PERCENTAGE:
+        return True, None, 10
+
+    level = _valid_percentage(state.state)
+    if level is None:
+        return True, None, 100
+    return True, level, 300 if unit == PERCENTAGE else 150
 
 
 def get_battery_level(state: State) -> float | None:
-    """Get battery level from entity state or attributes.
-
-    Uses a hybrid strategy in order of priority:
-    1. PRIMARY: ``device_class == "battery"`` → use the state value directly.
-       This is language-independent and the most reliable method.
-    2. FALLBACK 1: Check well-known battery attribute names (``battery_level``,
-       ``battery``, ``Battery``).
-    3. FALLBACK 2: Heuristic – if ``"battery"`` appears in the entity_id and
-       the state is a valid 0-100 number.
-
-    Returns the battery level as a float, or None if not found or unavailable.
-    """
-    # Exclude entities that should not be monitored
-    if should_exclude_entity(state):
-        return None
-
-    # PRIMARY: entity explicitly declared as a battery sensor via device_class
-    if state.attributes.get("device_class") == BATTERY_DEVICE_CLASS:
-        try:
-            level = float(state.state)
-            if 0 <= level <= 100:
-                return level
-        except (ValueError, TypeError):
-            pass
-        # device_class is battery but state is unavailable/unknown – do not
-        # fall through to attribute checks; the entity is already identified.
-        return None
-
-    # FALLBACK 1: Check for any well-known battery attribute
-    for attr_name in BATTERY_ATTRS:
-        battery_value = state.attributes.get(attr_name)
-        if battery_value is not None:
-            try:
-                return float(battery_value)
-            except (ValueError, TypeError):
-                continue
-
-    # FALLBACK 2: Heuristic – entity_id contains "battery"
-    if "battery" in state.entity_id.lower():
-        try:
-            potential_level = float(state.state)
-            # Validate range - battery levels should be between 0 and 100
-            if 0 <= potential_level <= 100:
-                return potential_level
-        except (ValueError, TypeError):
-            pass
-
-    return None
+    """Return a valid battery percentage, if the state provides one."""
+    return _battery_reading(state)[1]
 
 
 def has_battery_attribute(state: State) -> bool:
-    """Check if a state has battery attributes or is a battery entity.
-
-    Uses a hybrid strategy in order of priority:
-    1. PRIMARY: ``device_class == "battery"`` → always considered a battery entity.
-    2. FALLBACK 1: Any well-known battery attribute name is present.
-    3. FALLBACK 2: Heuristic – ``"battery"`` appears in the entity_id.
-    """
-    # Exclude entities that should not be monitored
-    if should_exclude_entity(state):
-        return False
-
-    # PRIMARY: entity explicitly declared as a battery sensor via device_class
-    if state.attributes.get("device_class") == BATTERY_DEVICE_CLASS:
-        return True
-
-    # FALLBACK 1: Check if any battery attribute exists
-    for attr_name in BATTERY_ATTRS:
-        if attr_name in state.attributes:
-            return True
-
-    # FALLBACK 2: Heuristic – entity_id contains "battery"
-    if "battery" in state.entity_id.lower():
-        return True
-
-    return False
+    """Return whether a state looks like a battery source."""
+    return _battery_reading(state)[0]
 
 
 def is_battery_device(state: State) -> bool:
-    """Check if a state object represents a battery device.
-
-    Delegates to ``get_battery_level``; returns True when a valid level is
-    available using the hybrid detection strategy (device_class primary,
-    attributes and entity_id heuristic as fallbacks).
-    """
+    """Return whether a state provides a valid battery percentage."""
     return get_battery_level(state) is not None
 
 
 def has_battery_but_unavailable(state: State) -> bool:
-    """Check if a state has battery attributes but value is unavailable.
+    """Return whether a battery source has no usable percentage."""
+    is_candidate, level, _priority = _battery_reading(state)
+    return is_candidate and level is None
 
-    Returns True if the entity has battery attributes but the value cannot
-    be obtained (unavailable, unknown, or cannot be converted to float).
+
+def _normalize_identifier(value: object) -> str | None:
+    """Normalize a hardware identifier while rejecting weak identifiers."""
+    normalized = _IDENTIFIER_NORMALIZER.sub("", str(value).lower())
+    if len(normalized) < 8 or normalized in {
+        "unknown",
+        "unavailable",
+        "00000000",
+    }:
+        return None
+    return normalized
+
+
+def _normalize_label(value: str | None) -> str:
+    """Normalize a user-facing label for conservative exact comparisons."""
+    if not value:
+        return ""
+    return " ".join(value.casefold().split())
+
+
+def _hardware_keys(device_entry: dr.DeviceEntry | None) -> frozenset[str]:
+    """Return cross-integration identity keys from the device registry."""
+    if device_entry is None:
+        return frozenset()
+
+    keys: set[str] = set()
+    for connection_type, value in device_entry.connections:
+        normalized = _normalize_identifier(value)
+        if normalized:
+            keys.add(f"connection:{connection_type}:{normalized}")
+
+    # Identifier namespaces are integration-specific. Comparing the normalized
+    # value as well allows the same serial/MAC to match across integrations.
+    for _domain, value in device_entry.identifiers:
+        normalized = _normalize_identifier(value)
+        if normalized:
+            keys.add(f"identifier:{normalized}")
+
+    return frozenset(keys)
+
+
+def _zigbee_info(
+    hass: HomeAssistant, device_entry: dr.DeviceEntry | None
+) -> tuple[bool, str | None]:
+    """Return whether a device is Zigbee and its best available identifier."""
+    if device_entry is None:
+        return False, None
+
+    for domain, value in device_entry.identifiers:
+        if domain in ZIGBEE_INTEGRATION_DOMAINS:
+            return True, str(value)
+
+    for config_entry_id in device_entry.config_entries:
+        config_entry = hass.config_entries.async_get_entry(config_entry_id)
+        if config_entry and config_entry.domain in ZIGBEE_INTEGRATION_DOMAINS:
+            return True, None
+
+    return False, None
+
+
+def _source_from_state(
+    hass: HomeAssistant,
+    state: State,
+    entity_registry: er.EntityRegistry,
+    device_registry: dr.DeviceRegistry,
+    area_registry: ar.AreaRegistry,
+) -> BatterySource | None:
+    """Build a battery source from one Home Assistant state."""
+    is_candidate, level, priority = _battery_reading(state)
+    if not is_candidate:
+        return None
+
+    entity_entry = entity_registry.async_get(state.entity_id)
+    device_id = entity_entry.device_id if entity_entry else None
+    device_entry = device_registry.async_get(device_id) if device_id else None
+
+    if device_entry and any(
+        identifier[0] == DOMAIN for identifier in device_entry.identifiers
+    ):
+        return None
+
+    name = state.attributes.get("friendly_name", state.entity_id)
+    area_id = entity_entry.area_id if entity_entry else None
+    if device_entry:
+        name = device_entry.name_by_user or device_entry.name or name
+        area_id = area_id or device_entry.area_id
+
+    if DOMAIN.replace("_", " ") in str(name).casefold():
+        return None
+
+    area_entry = area_registry.async_get_area(area_id) if area_id else None
+    integration = (
+        entity_entry.platform if entity_entry else state.entity_id.partition(".")[0]
+    )
+    is_zigbee, zigbee_identifier = _zigbee_info(hass, device_entry)
+
+    return BatterySource(
+        entity_id=state.entity_id,
+        device_id=device_id,
+        name=str(name),
+        area=area_entry.name if area_entry else None,
+        integration=integration,
+        level=level,
+        priority=priority,
+        is_zigbee=is_zigbee,
+        zigbee_identifier=zigbee_identifier,
+        hardware_keys=_hardware_keys(device_entry),
+    )
+
+
+def _union_exact_identities(sources: list[BatterySource], groups: _DisjointSet) -> None:
+    """Group sources that share a registry device or hardware identifier."""
+    device_ids: dict[str, int] = {}
+    hardware_keys: dict[str, int] = {}
+    for index, source in enumerate(sources):
+        if source.device_id:
+            if source.device_id in device_ids:
+                groups.union(index, device_ids[source.device_id])
+            else:
+                device_ids[source.device_id] = index
+        for hardware_key in source.hardware_keys:
+            if hardware_key in hardware_keys:
+                groups.union(index, hardware_keys[hardware_key])
+            else:
+                hardware_keys[hardware_key] = index
+
+
+def _components(
+    sources: list[BatterySource], groups: _DisjointSet
+) -> dict[int, list[int]]:
+    """Return current union-find components."""
+    result: dict[int, list[int]] = {}
+    for index in range(len(sources)):
+        result.setdefault(groups.find(index), []).append(index)
+    return result
+
+
+def _union_unambiguous_labels(
+    sources: list[BatterySource], groups: _DisjointSet
+) -> None:
+    """Merge exact name+area matches across distinct integrations.
+
+    This fallback is deliberately conservative: an area is required, every
+    component must come from a disjoint set of integrations, and the same
+    integration may not contribute two devices to the match.
     """
-    # First check if this entity has battery attributes
-    if not has_battery_attribute(state):
-        return False
-    
-    # If battery level can be obtained, it's available (not what we're looking for)
-    if get_battery_level(state) is not None:
-        return False
-    
-    # Has battery attribute but value cannot be obtained
-    return True
+    signature_groups: dict[tuple[str, str], list[list[int]]] = {}
+    for indexes in _components(sources, groups).values():
+        representative = max(
+            (sources[index] for index in indexes), key=lambda item: item.priority
+        )
+        signature = (
+            _normalize_label(representative.name),
+            _normalize_label(representative.area),
+        )
+        if signature[0] and signature[1]:
+            signature_groups.setdefault(signature, []).append(indexes)
 
-
-async def get_device_info(
-    hass: HomeAssistant, state: State
-) -> tuple[str | None, str | None, str | None, bool, str | None]:
-    """Get device information for a battery entity.
-
-    Returns a tuple of (display_name, device_id, area_name, is_zigbee, zigbee_identifier).
-    - display_name: The name to display (device name from registry or friendly_name), or None if device belongs to battery_devices_monitor
-    - device_id: The device ID if available, or None
-    - area_name: The area name if device is assigned to an area, or None
-    - is_zigbee: True if device belongs to a known Zigbee integration
-    - zigbee_identifier: Zigbee identifier (e.g. IEEE) when available
-    """
-    entity_reg = er.async_get(hass)
-    device_reg = dr.async_get(hass)
-    area_reg = ar.async_get(hass)
-
-    device_name = None
-    device_id = None
-    area_name = None
-    is_zigbee = False
-    zigbee_identifier = None
-
-    # Look up entity in the entity registry
-    entity_entry = entity_reg.async_get(state.entity_id)
-    if entity_entry and entity_entry.device_id:
-        device_id = entity_entry.device_id
-        device_entry = device_reg.async_get(device_id)
-        if device_entry:
-            # Check if this device belongs to battery_devices_monitor integration
-            # If so, skip it (the monitor itself should not be monitored)
-            for identifier in device_entry.identifiers:
-                if identifier[0] == DOMAIN:
-                    # This device belongs to our integration, return None for all values
-                    return None, None, None, False, None
-
-            # Detect Zigbee from device identifiers (usually most reliable)
-            for identifier in device_entry.identifiers:
-                if identifier[0] in ZIGBEE_INTEGRATION_DOMAINS:
-                    is_zigbee = True
-                    zigbee_identifier = str(identifier[1])
-                    break
-
-            # Fallback: detect Zigbee from linked config entries
-            if not is_zigbee:
-                for config_entry_id in device_entry.config_entries:
-                    config_entry = hass.config_entries.async_get_entry(config_entry_id)
-                    if config_entry and config_entry.domain in ZIGBEE_INTEGRATION_DOMAINS:
-                        is_zigbee = True
-                        break
-
-            # Use device name or name_by_user if available
-            device_name = device_entry.name_by_user or device_entry.name
-            
-            # Exclude devices with "Battery Devices Monitor" in their name
-            if device_name and EXCLUDED_NAME_PATTERN in device_name:
-                return None, None, None, False, None
-
-            # Get area name if device is assigned to an area
-            if device_entry.area_id:
-                area_entry = area_reg.async_get_area(device_entry.area_id)
-                if area_entry:
-                    area_name = area_entry.name
-
-    # If we couldn't get the device name, fall back to the entity's friendly name
-    if not device_name:
-        device_name = state.attributes.get("friendly_name", state.entity_id)
-    
-    # Also check the fallback name for "Battery Devices Monitor"
-    if device_name and EXCLUDED_NAME_PATTERN in device_name:
-        return None, None, None, False, None
-
-    return device_name, device_id, area_name, is_zigbee, zigbee_identifier
-
-
-async def get_all_battery_devices(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
-    """Get all battery devices with their information.
-
-    Returns a dictionary where:
-    - Key: device_id (or entity_id if device_id not available)
-    - Value: dict with 'name', 'entity_id', 'area', 'battery_level'
-    """
-    _LOGGER.debug("Starting get_all_battery_devices")
-    battery_devices: dict[str, dict[str, Any]] = {}
-
-    all_states = hass.states.async_all()
-    _LOGGER.debug("Retrieved %d total states from Home Assistant", len(all_states))
-
-    for state in all_states:
-        if not is_battery_device(state):
+    for matching_components in signature_groups.values():
+        if len(matching_components) < 2:
             continue
-
-        battery_level = get_battery_level(state)
-        if battery_level is None:
+        integration_sets = [
+            {sources[index].integration for index in indexes}
+            for indexes in matching_components
+        ]
+        if any(
+            left & right
+            for position, left in enumerate(integration_sets)
+            for right in integration_sets[position + 1 :]
+        ):
             continue
+        first = matching_components[0][0]
+        for indexes in matching_components[1:]:
+            groups.union(first, indexes[0])
 
-        try:
-            device_name, device_id, area_name, is_zigbee, zigbee_identifier = await get_device_info(hass, state)
-        except Exception as err:
-            _LOGGER.error(
-                "Error getting device info for %s: %s",
-                state.entity_id,
-                err,
-                exc_info=True,
+
+def _best_source(sources: Iterable[BatterySource]) -> BatterySource:
+    """Select the best percentage source, using the lowest equal-quality value."""
+    source_list = list(sources)
+    available = [source for source in source_list if source.level is not None]
+    if available:
+        highest_priority = max(source.priority for source in available)
+        top_sources = [
+            source for source in available if source.priority == highest_priority
+        ]
+        return min(top_sources, key=lambda item: (item.level or 0, item.entity_id))
+    return max(source_list, key=lambda item: (item.priority, item.entity_id))
+
+
+def _device_data(sources: list[BatterySource]) -> dict[str, Any]:
+    """Create the public and diagnostic representation of a physical device."""
+    selected = _best_source(sources)
+    source_ids = sorted({source.source_id for source in sources})
+    source_entity_ids = sorted({source.entity_id for source in sources})
+    device_ids = sorted(
+        source.device_id for source in sources if source.device_id is not None
+    )
+    canonical_id = device_ids[0] if device_ids else source_entity_ids[0]
+    zigbee_source = next((source for source in sources if source.is_zigbee), selected)
+    return {
+        "id": canonical_id,
+        "name": selected.name,
+        "entity_id": selected.entity_id,
+        "area": selected.area,
+        "battery_level": selected.level,
+        "is_zigbee": zigbee_source.is_zigbee,
+        "zigbee_identifier": zigbee_source.zigbee_identifier,
+        "source_ids": source_ids,
+        "source_entity_ids": source_entity_ids,
+        "source_integrations": sorted({source.integration for source in sources}),
+    }
+
+
+def deduplicate_sources(
+    sources: list[BatterySource],
+) -> dict[str, dict[str, Any]]:
+    """Group battery sources and select one percentage per physical device."""
+    if not sources:
+        return {}
+
+    groups = _DisjointSet(len(sources))
+    _union_exact_identities(sources, groups)
+    _union_unambiguous_labels(sources, groups)
+
+    devices: dict[str, dict[str, Any]] = {}
+    for indexes in _components(sources, groups).values():
+        device_data = _device_data([sources[index] for index in indexes])
+        devices[device_data["id"]] = device_data
+    return devices
+
+
+async def discover_battery_devices(
+    hass: HomeAssistant,
+) -> dict[str, dict[str, Any]]:
+    """Discover battery sources and return one record per physical device."""
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
+    area_registry = ar.async_get(hass)
+    sources = [
+        source
+        for state in hass.states.async_all()
+        if (
+            source := _source_from_state(
+                hass,
+                state,
+                entity_registry,
+                device_registry,
+                area_registry,
             )
-            continue
+        )
+        is not None
+    ]
+    devices = deduplicate_sources(sources)
 
-        # Skip if device belongs to battery_devices_monitor integration
-        if device_name is None:
-            continue
-
-        # Use device_id if available, otherwise use entity_id as unique key
-        unique_key = device_id if device_id else state.entity_id
-
-        # Check if we've already processed this device
-        # Keep the entry with the highest battery level if duplicate
-        if unique_key in battery_devices:
-            existing_level = battery_devices[unique_key]["battery_level"]
-            if battery_level > existing_level:
-                battery_devices[unique_key] = {
-                    "id": unique_key,
-                    "name": device_name,
-                    "entity_id": state.entity_id,
-                    "area": area_name,
-                    "battery_level": battery_level,
-                    "is_zigbee": is_zigbee,
-                    "zigbee_identifier": zigbee_identifier,
-                }
-        else:
-            battery_devices[unique_key] = {
-                "id": unique_key,
-                "name": device_name,
-                "entity_id": state.entity_id,
-                "area": area_name,
-                "battery_level": battery_level,
-                "is_zigbee": is_zigbee,
-                "zigbee_identifier": zigbee_identifier,
-            }
-
-    _LOGGER.debug("Found %d battery devices", len(battery_devices))
-    return battery_devices
+    _LOGGER.debug(
+        "Discovered %d battery sources grouped into %d physical devices",
+        len(sources),
+        len(devices),
+    )
+    return devices
 
 
-async def get_devices_without_battery_info(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
-    """Get devices that have battery but value is unavailable.
+async def get_all_battery_devices(
+    hass: HomeAssistant,
+) -> dict[str, dict[str, Any]]:
+    """Return deduplicated physical devices with a valid percentage."""
+    devices = await discover_battery_devices(hass)
+    return {
+        device_id: data
+        for device_id, data in devices.items()
+        if data["battery_level"] is not None
+    }
 
-    Returns a dictionary where:
-    - Key: device_id (or entity_id if device_id not available)
-    - Value: dict with 'id', 'name', 'area', 'battery_level', 'entity_id', and Zigbee metadata
-    """
-    _LOGGER.debug("Starting get_devices_without_battery_info")
-    devices_without_info: dict[str, dict[str, Any]] = {}
 
-    all_states = hass.states.async_all()
-
-    for state in all_states:
-        # Check if this device has battery attributes but value is unavailable
-        if not has_battery_but_unavailable(state):
-            continue
-
-        try:
-            device_name, device_id, area_name, is_zigbee, zigbee_identifier = await get_device_info(hass, state)
-        except Exception as err:
-            _LOGGER.error(
-                "Error getting device info for %s: %s",
-                state.entity_id,
-                err,
-                exc_info=True,
-            )
-            continue
-
-        # Skip if device belongs to battery_devices_monitor integration
-        if device_name is None:
-            continue
-
-        # Use device_id if available, otherwise use entity_id as unique key
-        unique_key = device_id if device_id else state.entity_id
-
-        # Only add if we haven't already processed this device
-        if unique_key not in devices_without_info:
-            devices_without_info[unique_key] = {
-                "id": unique_key,
-                "name": device_name,
-                "area": area_name,
-                "battery_level": None,
-                "entity_id": state.entity_id,
-                "is_zigbee": is_zigbee,
-                "zigbee_identifier": zigbee_identifier,
-            }
-
-    _LOGGER.debug("Found %d devices without battery info", len(devices_without_info))
-    return devices_without_info
+async def get_devices_without_battery_info(
+    hass: HomeAssistant,
+) -> dict[str, dict[str, Any]]:
+    """Return deduplicated physical devices without a valid percentage."""
+    devices = await discover_battery_devices(hass)
+    return {
+        device_id: data
+        for device_id, data in devices.items()
+        if data["battery_level"] is None
+    }
