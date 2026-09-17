@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-09-17
+
+### Added
+- **Per-device battery lifetime counter**: every deduplicated physical device now receives a duration sensor that reports the number of complete days since its battery tracking began or was last reset.
+- **Battery replacement button**: each tracked device has a button that immediately resets its lifetime counter to zero when a battery is replaced.
+- **Battery type field**: each tracked device has a text entity where users can record the installed battery model or format, such as `CR2032`, `2x AA`, or `Li-ion 18650`.
+- Persistent storage for replacement dates, battery types, and source aliases. Tracking survives Home Assistant restarts and remains associated when the selected source entity or integration changes.
+- Battery age and battery type are included in integration diagnostics.
+
+### Changed
+- Added the Home Assistant `text` platform and logical battery-tracking devices containing the duration sensor, reset button, and battery type field.
+- Battery age sensors refresh hourly and update immediately after a manual reset.
+- Added translated names for the new entities in English, Spanish, German, French, and Portuguese.
+
 ## [2.0.0] - 2026-08-20
 
 ### Added

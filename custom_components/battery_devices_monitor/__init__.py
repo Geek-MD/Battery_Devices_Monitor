@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 type BatteryMonitorConfigEntry = ConfigEntry[BatteryMonitorCoordinator]
 
-PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR, Platform.TEXT]
 _ENTITY_SERVICE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 
 
@@ -118,6 +118,7 @@ async def async_setup_entry(
 ) -> bool:
     """Set up Battery Devices Monitor from a config entry."""
     coordinator = BatteryMonitorCoordinator(hass, entry)
+    await coordinator.async_initialize_tracking()
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     coordinator.async_start()

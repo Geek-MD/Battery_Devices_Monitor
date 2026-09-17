@@ -13,7 +13,7 @@
 <img width="200" height="200" alt="image" src="https://github.com/Geek-MD/Battery_Devices_Monitor/blob/main/custom_components/battery_devices_monitor/brand/logo.png?raw=true" />
 
 # Battery Devices Monitor
-A Home Assistant custom integration that monitors all battery-powered devices and provides a single sensor showing "OK", "Warning", or "Problem" status.
+A Home Assistant custom integration that monitors battery-powered devices, provides an overall "OK", "Warning", or "Problem" status, and tracks the lifetime and type of each device's battery.
 
 ## Features
 
@@ -24,12 +24,16 @@ A Home Assistant custom integration that monitors all battery-powered devices an
 - 📍 Area information: device names include their assigned area for easier identification
 - ⚙️ Configurable battery threshold via UI
 - 🚫 Exclude specific devices from monitoring
-- 📊 Single sensor showing overall battery status ("OK" or "Problem")
+- 📊 Overall sensor showing battery status ("OK", "Warning", or "Problem")
 - 📝 Detailed attributes showing all monitored devices
 - 🔔 Events fired when devices go below threshold
 - 🛠️ Services to get formatted lists of low battery / unavailable devices and to force a rescan
 - 🔄 On-demand rescan service to immediately re-discover battery entities after a device is reconfigured
 - 🔘 **Rescan button** on the device control page: a one-click button in the *Configuration* subsection that triggers an immediate rescan without leaving the UI
+- 📅 **Battery lifetime counter** for every deduplicated physical device, measured in complete days
+- ♻️ **Battery replacement button** that resets the corresponding lifetime counter to zero
+- ✏️ **Battery type field** for recording values such as `CR2032`, `2x AA`, or `Li-ion 18650`
+- 💾 Battery lifetime and type metadata persist across Home Assistant restarts and battery-source changes
 - 🌐 Multi-language support (English, Spanish, French, Portuguese, and German)
 
 ## Installation
@@ -63,7 +67,7 @@ The integration can be configured through the Home Assistant UI:
 
 ## Usage
 
-After installation and configuration, the integration creates a sensor named `sensor.battery_monitor_status` (kept stable for both upgrades and clean installations) with:
+After installation and configuration, the integration creates the overall sensor `sensor.battery_monitor_status` (kept stable for both upgrades and clean installations) plus the per-device tracking entities described below.
 
 ### States
 - **OK**: All monitored devices have battery levels at or above the threshold and all have available battery info
@@ -91,6 +95,18 @@ Within each physical-device group, the selected source order is:
 5. A binary `battery_low`/status entity only when no percentage exists; it is listed as unavailable because it cannot be compared with the configured threshold.
 
 All percentages must be finite and between 0 and 100. If equally reliable percentage sources disagree, the lowest value is used so that a low battery is not hidden. Source entities and integrations are included in downloaded diagnostics, while the public sensor attributes continue to show one entry per physical device.
+
+### Battery lifetime and type tracking
+
+For every deduplicated physical device, Battery Devices Monitor creates a logical battery-tracking device with three entities:
+
+- **Battery age** (`sensor`): number of complete 24-hour days since the counter began or was last reset. It starts at zero when the device is first discovered and refreshes hourly.
+- **Reset battery age** (`button`): press this after physically replacing the battery. The sensor changes to zero immediately and begins counting the new battery's lifetime.
+- **Battery type** (`text`): a free-text field for the installed battery model or format, for example `CR2032`, `2x AA`, or `Li-ion 18650`.
+
+The replacement timestamp, battery type, and known source aliases are stored persistently by Home Assistant. They survive restarts and remain linked when a device changes its selected battery entity or is deduplicated through another integration. Tracking entities are created for every discovered battery device, including devices excluded from threshold alerts.
+
+The initial counter starts when version 2.1.0 first discovers a device; the integration cannot infer when an already-installed battery was physically inserted. Press the reset button after installing a fresh battery to establish an accurate starting date.
 
 **Example attribute structure:**
 ```json
@@ -421,7 +437,7 @@ Fired when a Zigbee device appears in `devices_without_battery_info`. This event
 
 ## Development
 
-The event-driven coordinator performs one discovery pass at startup and refreshes when a battery source or the entity/device registry changes. It stores runtime state in `ConfigEntry.runtime_data`, groups physical devices before classifying their battery level, and does not poll Home Assistant periodically.
+The event-driven coordinator performs one discovery pass at startup and refreshes when a battery source or the entity/device registry changes. It stores runtime state in `ConfigEntry.runtime_data`, groups physical devices before classifying their battery level, and does not poll Home Assistant periodically. Per-device battery replacement dates, battery types, and source aliases are persisted in Home Assistant's `.storage` directory.
 
 ### Known limitations
 

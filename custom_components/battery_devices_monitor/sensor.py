@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.sensor import SensorEntity
+from datetime import datetime, timedelta
+
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.const import UnitOfTime
+from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -29,6 +34,7 @@ from .const import (
     STATE_WARNING,
 )
 from .coordinator import BatteryMonitorCoordinator
+from .tracking import BatteryTrackingEntity
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -43,7 +49,64 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Battery Devices Monitor sensor."""
+    coordinator = config_entry.runtime_data
+    known_tracking_ids: set[str] = set()
+
+    @callback
+    def async_add_battery_age_entities() -> None:
+        """Add a duration sensor for every newly discovered physical device."""
+        new_tracking_ids = set(coordinator.active_tracking_ids) - known_tracking_ids
+        if not new_tracking_ids:
+            return
+        known_tracking_ids.update(new_tracking_ids)
+        async_add_entities(
+            BatteryAgeSensor(coordinator, tracking_id)
+            for tracking_id in sorted(new_tracking_ids)
+        )
+
     async_add_entities([BatteryMonitorSensor(config_entry)])
+    async_add_battery_age_entities()
+    config_entry.async_on_unload(
+        coordinator.async_add_listener(async_add_battery_age_entities)
+    )
+
+
+class BatteryAgeSensor(BatteryTrackingEntity, SensorEntity):
+    """Count complete days since a device's battery counter was reset."""
+
+    _attr_translation_key = "battery_age"
+    _attr_icon = "mdi:calendar-clock"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.DAYS
+    _attr_suggested_display_precision = 0
+
+    def __init__(
+        self, coordinator: BatteryMonitorCoordinator, tracking_id: str
+    ) -> None:
+        """Initialize the battery age sensor."""
+        super().__init__(coordinator, tracking_id)
+        self._attr_unique_id = f"{DOMAIN}_{tracking_id}_battery_age"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return complete elapsed days since the last manual reset."""
+        return self.coordinator.battery_age_days(self.tracking_id)
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh the complete-day value periodically."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_track_time_interval(
+                self.hass,
+                self._async_time_update,
+                timedelta(hours=1),
+            )
+        )
+
+    @callback
+    def _async_time_update(self, _now: datetime) -> None:
+        """Write the next elapsed-day value."""
+        self.async_write_ha_state()
 
 
 class BatteryMonitorSensor(CoordinatorEntity[BatteryMonitorCoordinator], SensorEntity):

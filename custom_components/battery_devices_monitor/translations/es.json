@@ -54,6 +54,19 @@
     "button": {
       "rescan": {
         "name": "Reescanear Dispositivos con Batería"
+      },
+      "reset_battery_age": {
+        "name": "Reiniciar antigüedad de la batería"
+      }
+    },
+    "sensor": {
+      "battery_age": {
+        "name": "Duración de la batería"
+      }
+    },
+    "text": {
+      "battery_type": {
+        "name": "Tipo de batería"
       }
     }
   },

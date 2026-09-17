@@ -27,6 +27,15 @@ async def async_get_config_entry_diagnostics(
     devices = []
     for device_id, device in entry.runtime_data.data.items():
         source_ids = set(device.get("source_ids", []))
+        tracking_id = next(
+            (
+                current_tracking_id
+                for current_tracking_id in entry.runtime_data.active_tracking_ids
+                if entry.runtime_data.device_for_tracking_id(current_tracking_id)
+                is device
+            ),
+            None,
+        )
         devices.append(
             {
                 "device_id": device_id,
@@ -38,6 +47,14 @@ async def async_get_config_entry_diagnostics(
                 "source_integrations": device.get("source_integrations", []),
                 "source_count": len(device.get("source_entity_ids", [])),
                 "is_excluded": bool(excluded & ({device_id} | source_ids)),
+                "battery_age_days": (
+                    entry.runtime_data.battery_age_days(tracking_id)
+                    if tracking_id
+                    else None
+                ),
+                "battery_type": (
+                    entry.runtime_data.battery_type(tracking_id) if tracking_id else ""
+                ),
             }
         )
 
