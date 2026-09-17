@@ -4,6 +4,11 @@ from typing import Final
 
 DOMAIN: Final = "battery_devices_monitor"
 
+# Persistent per-device battery tracking
+STORAGE_VERSION: Final = 1
+STORAGE_KEY: Final = f"{DOMAIN}.battery_tracking"
+MAX_BATTERY_TYPE_LENGTH: Final = 100
+
 # Configuration keys
 CONF_BATTERY_THRESHOLD: Final = "battery_threshold"
 CONF_EXCLUDED_DEVICES: Final = "excluded_devices"

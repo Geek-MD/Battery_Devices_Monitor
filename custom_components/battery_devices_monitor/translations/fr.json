@@ -54,6 +54,19 @@
     "button": {
       "rescan": {
         "name": "Réanalyser les périphériques à batterie"
+      },
+      "reset_battery_age": {
+        "name": "Réinitialiser l'âge de la batterie"
+      }
+    },
+    "sensor": {
+      "battery_age": {
+        "name": "Âge de la batterie"
+      }
+    },
+    "text": {
+      "battery_type": {
+        "name": "Type de batterie"
       }
     }
   },

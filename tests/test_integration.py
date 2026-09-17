@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from homeassistant.const import PERCENTAGE
+from datetime import UTC, datetime, timedelta
+
+from homeassistant.const import ATTR_ENTITY_ID, PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
     area_registry as ar,
@@ -100,6 +102,46 @@ async def test_setup_deduplication_and_reactive_update(
     assert state.attributes[ATTR_DEVICES_BELOW_THRESHOLD] == []
     assert events == []
 
+    coordinator = monitor_entry.runtime_data
+    assert len(coordinator.active_tracking_ids) == 1
+    lock_tracking_id = coordinator.active_tracking_ids[0]
+    age_entity_id = entity_registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_age"
+    )
+    reset_entity_id = entity_registry.async_get_entity_id(
+        "button", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_reset_battery_age"
+    )
+    type_entity_id = entity_registry.async_get_entity_id(
+        "text", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_type"
+    )
+    assert age_entity_id is not None
+    assert reset_entity_id is not None
+    assert type_entity_id is not None
+    assert hass.states.get(age_entity_id).state == "0"
+
+    await hass.services.async_call(
+        "text",
+        "set_value",
+        {ATTR_ENTITY_ID: type_entity_id, "value": "CR123A"},
+        blocking=True,
+    )
+    assert hass.states.get(type_entity_id).state == "CR123A"
+
+    coordinator._tracking_records[lock_tracking_id]["installed_at"] = (  # noqa: SLF001
+        datetime.now(UTC) - timedelta(days=7)
+    ).isoformat()
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get(age_entity_id).state == "7"
+
+    await hass.services.async_call(
+        "button",
+        "press",
+        {ATTR_ENTITY_ID: reset_entity_id},
+        blocking=True,
+    )
+    assert hass.states.get(age_entity_id).state == "0"
+
     ring_entry = MockConfigEntry(domain="ring")
     ring_entry.add_to_hass(hass)
     ring_device = device_registry.async_get_or_create(
@@ -124,6 +166,18 @@ async def test_setup_deduplication_and_reactive_update(
     state = hass.states.get("sensor.battery_monitor_status")
     assert state is not None
     assert state.attributes[ATTR_TOTAL_MONITORED_DEVICES] == 2
+    assert len(coordinator.active_tracking_ids) == 2
+    ring_tracking_id = next(
+        tracking_id
+        for tracking_id in coordinator.active_tracking_ids
+        if coordinator.device_for_tracking_id(tracking_id)["name"] == "Garden camera"
+    )
+    assert (
+        entity_registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{DOMAIN}_{ring_tracking_id}_battery_age"
+        )
+        is not None
+    )
 
     hass.states.async_set(
         "sensor.front_door_lock_battery",
@@ -141,3 +195,10 @@ async def test_setup_deduplication_and_reactive_update(
     assert state.state == "Problem"
     assert state.attributes[ATTR_DEVICES_BELOW_THRESHOLD][0]["battery_level"] == 10
     assert len(events) == 1
+
+    assert await hass.config_entries.async_reload(monitor_entry.entry_id)
+    await hass.async_block_till_done()
+    reloaded_coordinator = monitor_entry.runtime_data
+    assert lock_tracking_id in reloaded_coordinator.active_tracking_ids
+    assert hass.states.get(type_entity_id).state == "CR123A"
+    assert hass.states.get(age_entity_id).state == "0"

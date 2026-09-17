@@ -54,6 +54,19 @@
     "button": {
       "rescan": {
         "name": "Batteriegeräte neu scannen"
+      },
+      "reset_battery_age": {
+        "name": "Batteriealter zurücksetzen"
+      }
+    },
+    "sensor": {
+      "battery_age": {
+        "name": "Batteriealter"
+      }
+    },
+    "text": {
+      "battery_type": {
+        "name": "Batterietyp"
       }
     }
   },
