@@ -64,11 +64,6 @@
         "name": "Letzter Batteriewechsel"
       }
     },
-    "text": {
-      "battery_type": {
-        "name": "Batterietyp"
-      }
-    },
     "select": {
       "battery_type": {
         "name": "Batterietyp"

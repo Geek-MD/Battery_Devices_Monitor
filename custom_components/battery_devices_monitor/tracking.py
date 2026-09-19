@@ -7,7 +7,6 @@ from typing import Any
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
 from .coordinator import BatteryMonitorCoordinator
 
 
@@ -34,7 +33,7 @@ class BatteryTrackingEntity(CoordinatorEntity[BatteryMonitorCoordinator]):
         return super().available and self.tracked_device is not None
 
     @property
-    def device_info(self) -> DeviceInfo:
+    def device_info(self) -> DeviceInfo | None:
         """Attach tracking controls to the physical device being monitored."""
         device = self.tracked_device
         if device and (device["device_identifiers"] or device["device_connections"]):
@@ -43,11 +42,7 @@ class BatteryTrackingEntity(CoordinatorEntity[BatteryMonitorCoordinator]):
                 connections=device["device_connections"],
             )
 
-        # Entities without a registry device still need a stable container.
-        name = device["name"] if device else "Unavailable battery device"
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.tracking_id)},
-            name=f"{name} battery tracking",
-            manufacturer="Geek-MD",
-            model="Battery lifetime tracker",
-        )
+        # Never manufacture a second device for an entity-only source. Such
+        # tracking entities remain unassigned until the source gains a real
+        # device-registry association.
+        return None

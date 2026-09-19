@@ -37,6 +37,8 @@ _NON_PERCENTAGE_MARKERS = ("battery_voltage", "battery_volts", "battery_health")
 _UNAVAILABLE_STATES = {"", "none", "unknown", "unavailable"}
 _BINARY_BATTERY_STATES = {"0", "1", "false", "low", "normal", "off", "on", "true"}
 _IDENTIFIER_NORMALIZER = re.compile(r"[^a-z0-9]")
+_POWER_SOURCE_ATTRS = ("power_source", "power_supply", "power_type")
+_MAINS_POWER_MARKERS = ("ac", "dc", "mains", "line", "wired")
 
 
 @dataclass(slots=True, frozen=True)
@@ -92,6 +94,31 @@ def should_exclude_entity(state: State) -> bool:
         state.entity_id.startswith(f"sensor.{DOMAIN}")
         or entity_domain in EXCLUDED_ENTITY_DOMAINS
     )
+
+
+def _declares_mains_power(state: State) -> bool:
+    """Return whether entity metadata explicitly says it is not battery powered."""
+    battery_powered = state.attributes.get("battery_powered")
+    if battery_powered is False or str(battery_powered).strip().casefold() in {
+        "0",
+        "false",
+        "no",
+    }:
+        return True
+
+    for attribute in _POWER_SOURCE_ATTRS:
+        value = state.attributes.get(attribute)
+        if value is None:
+            continue
+        normalized = str(value).strip().casefold()
+        if any(
+            normalized == marker
+            or normalized.startswith(f"{marker} ")
+            or normalized.startswith(f"{marker}(")
+            for marker in _MAINS_POWER_MARKERS
+        ):
+            return True
+    return False
 
 
 def _valid_percentage(value: Any) -> float | None:
@@ -495,20 +522,27 @@ async def discover_battery_devices(
     device_registry = dr.async_get(hass)
     area_registry = ar.async_get(hass)
     states = hass.states.async_all()
-    sources = [
-        source
+    mains_powered_device_ids = {
+        entity_entry.device_id
         for state in states
-        if (
-            source := _source_from_state(
-                hass,
-                state,
-                entity_registry,
-                device_registry,
-                area_registry,
-            )
+        if _declares_mains_power(state)
+        and (entity_entry := entity_registry.async_get(state.entity_id))
+        and entity_entry.device_id
+    }
+    sources: list[BatterySource] = []
+    for state in states:
+        entity_entry = entity_registry.async_get(state.entity_id)
+        if entity_entry and entity_entry.device_id in mains_powered_device_ids:
+            continue
+        source = _source_from_state(
+            hass,
+            state,
+            entity_registry,
+            device_registry,
+            area_registry,
         )
-        is not None
-    ]
+        if source is not None:
+            sources.append(source)
     # Type metadata is sometimes exposed on a door/lock entity rather than on
     # its battery sensor. Associate those attributes through the shared device.
     type_by_device: dict[str, str] = {}

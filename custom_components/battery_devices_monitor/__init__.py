@@ -11,6 +11,7 @@ from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -32,7 +33,6 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
     Platform.SELECT,
     Platform.SENSOR,
-    Platform.TEXT,
 ]
 _ENTITY_SERVICE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 
@@ -128,9 +128,36 @@ async def async_setup_entry(
     entry.runtime_data = coordinator
     coordinator.async_start()
 
+    _remove_legacy_tracking_registry_entries(hass, entry)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     return True
+
+
+def _remove_legacy_tracking_registry_entries(
+    hass: HomeAssistant, entry: BatteryMonitorConfigEntry
+) -> None:
+    """Remove v2.1.0/2.1.1 text entities and synthetic tracking devices.
+
+    Entity registry records are retained when a platform is removed.  Removing
+    the obsolete records here also detaches the remaining tracking entities
+    from the synthetic device so Home Assistant can associate them with their
+    real source device during platform setup.
+    """
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
+
+    for entity in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+        if entity.domain == Platform.TEXT:
+            entity_registry.async_remove(entity.entity_id)
+
+    for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
+        if any(
+            domain == DOMAIN and identifier != entry.entry_id
+            for domain, identifier in device.identifiers
+        ):
+            device_registry.async_remove_device(device.id)
 
 
 async def async_unload_entry(

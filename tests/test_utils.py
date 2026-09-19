@@ -12,10 +12,33 @@ from homeassistant.core import State
 
 from custom_components.battery_devices_monitor.utils import (
     BatterySource,
+    _declares_mains_power,
     deduplicate_sources,
     get_battery_level,
     has_battery_but_unavailable,
 )
+
+
+@pytest.mark.parametrize(
+    "attributes",
+    [
+        {"battery_powered": False},
+        {"battery_powered": "no"},
+        {"power_source": "Mains (single phase)"},
+        {"power_supply": "AC"},
+        {"power_type": "wired"},
+    ],
+)
+def test_explicit_mains_power_metadata_is_excluded(attributes: dict[str, Any]) -> None:
+    """Explicit non-battery power metadata must prevent false discovery."""
+    assert _declares_mains_power(State("sensor.plug_battery", "100", attributes))
+
+
+def test_battery_power_metadata_is_not_excluded() -> None:
+    """Battery-powered metadata remains eligible for discovery."""
+    assert not _declares_mains_power(
+        State("sensor.remote_battery", "100", {"power_source": "battery"})
+    )
 
 
 def _source(

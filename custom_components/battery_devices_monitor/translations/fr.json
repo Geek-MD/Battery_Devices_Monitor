@@ -64,11 +64,6 @@
         "name": "Dernier remplacement de la batterie"
       }
     },
-    "text": {
-      "battery_type": {
-        "name": "Type de batterie"
-      }
-    },
     "select": {
       "battery_type": {
         "name": "Type de batterie"
