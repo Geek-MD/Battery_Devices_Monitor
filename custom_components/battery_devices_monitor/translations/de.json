@@ -55,18 +55,26 @@
       "rescan": {
         "name": "Batteriegeräte neu scannen"
       },
-      "reset_battery_age": {
-        "name": "Batteriealter zurücksetzen"
+      "battery_changed": {
+        "name": "Batterie gewechselt"
       }
     },
     "sensor": {
-      "battery_age": {
-        "name": "Batteriealter"
+      "last_battery_change": {
+        "name": "Letzter Batteriewechsel"
       }
     },
     "text": {
       "battery_type": {
         "name": "Batterietyp"
+      }
+    },
+    "select": {
+      "battery_type": {
+        "name": "Batterietyp"
+      },
+      "battery_number": {
+        "name": "Anzahl der Batterien"
       }
     }
   },

@@ -73,6 +73,8 @@ async def test_setup_deduplication_and_reactive_update(
             "device_class": "battery",
             "unit_of_measurement": PERCENTAGE,
             "friendly_name": "August battery",
+            "battery_type": "CR123A",
+            "battery_count": 2,
         },
     )
     hass.states.async_set(
@@ -114,10 +116,46 @@ async def test_setup_deduplication_and_reactive_update(
     type_entity_id = entity_registry.async_get_entity_id(
         "text", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_type"
     )
+    type_select_entity_id = entity_registry.async_get_entity_id(
+        "select", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_type_select"
+    )
+    number_select_entity_id = entity_registry.async_get_entity_id(
+        "select", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_number"
+    )
     assert age_entity_id is not None
     assert reset_entity_id is not None
     assert type_entity_id is not None
-    assert hass.states.get(age_entity_id).state == "0"
+    assert type_select_entity_id is not None
+    assert number_select_entity_id is not None
+    assert entity_registry.async_get(age_entity_id).device_id == august_device.id
+    assert entity_registry.async_get(reset_entity_id).device_id == august_device.id
+    assert entity_registry.async_get(type_entity_id).device_id == august_device.id
+    assert (
+        entity_registry.async_get(type_select_entity_id).device_id == august_device.id
+    )
+    assert (
+        entity_registry.async_get(number_select_entity_id).device_id == august_device.id
+    )
+    initial_change = datetime.fromisoformat(hass.states.get(age_entity_id).state)
+    assert datetime.now(UTC) - initial_change < timedelta(minutes=1)
+    assert hass.states.get(type_select_entity_id).state == "CR123A"
+    assert hass.states.get(number_select_entity_id).state == "2"
+
+    await hass.services.async_call(
+        "select",
+        "select_option",
+        {ATTR_ENTITY_ID: type_select_entity_id, "option": "2x AA"},
+        blocking=True,
+    )
+    assert hass.states.get(type_select_entity_id).state == "2x AA"
+
+    await hass.services.async_call(
+        "select",
+        "select_option",
+        {ATTR_ENTITY_ID: number_select_entity_id, "option": "3"},
+        blocking=True,
+    )
+    assert hass.states.get(number_select_entity_id).state == "3"
 
     await hass.services.async_call(
         "text",
@@ -126,13 +164,15 @@ async def test_setup_deduplication_and_reactive_update(
         blocking=True,
     )
     assert hass.states.get(type_entity_id).state == "CR123A"
+    assert hass.states.get(type_select_entity_id).state == "CR123A"
 
     coordinator._tracking_records[lock_tracking_id]["installed_at"] = (  # noqa: SLF001
         datetime.now(UTC) - timedelta(days=7)
     ).isoformat()
     coordinator.async_update_listeners()
     await hass.async_block_till_done()
-    assert hass.states.get(age_entity_id).state == "7"
+    last_change = datetime.fromisoformat(hass.states.get(age_entity_id).state)
+    assert timedelta(days=6, hours=23) < datetime.now(UTC) - last_change
 
     await hass.services.async_call(
         "button",
@@ -140,7 +180,8 @@ async def test_setup_deduplication_and_reactive_update(
         {ATTR_ENTITY_ID: reset_entity_id},
         blocking=True,
     )
-    assert hass.states.get(age_entity_id).state == "0"
+    reset_change = datetime.fromisoformat(hass.states.get(age_entity_id).state)
+    assert datetime.now(UTC) - reset_change < timedelta(minutes=1)
 
     ring_entry = MockConfigEntry(domain="ring")
     ring_entry.add_to_hass(hass)
@@ -201,4 +242,5 @@ async def test_setup_deduplication_and_reactive_update(
     reloaded_coordinator = monitor_entry.runtime_data
     assert lock_tracking_id in reloaded_coordinator.active_tracking_ids
     assert hass.states.get(type_entity_id).state == "CR123A"
-    assert hass.states.get(age_entity_id).state == "0"
+    reloaded_change = datetime.fromisoformat(hass.states.get(age_entity_id).state)
+    assert datetime.now(UTC) - reloaded_change < timedelta(minutes=1)

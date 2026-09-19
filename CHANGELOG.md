@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-09-19
+
+### Added
+- Battery types are automatically read from common device attributes or dedicated battery type/size/model entities.
+- Per-device dropdowns provide common battery types and a battery quantity from 1 to 16, while preserving values supplied by integrations.
+- Battery quantity is detected from common count/quantity attributes or dedicated entities when available.
+
+### Changed
+- Replaced the elapsed-day “Battery Age” display with a “Last Battery Change” timestamp and renamed “Reset Battery Age” to “Battery Changed”. Existing unique IDs remain stable.
+- Battery tracking, replacement, text, type, and quantity entities are attached to their corresponding Home Assistant physical device instead of a separate battery-tracking device whenever registry identity is available.
+
 ## [2.1.0] - 2026-09-17
 
 ### Added

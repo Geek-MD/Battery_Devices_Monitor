@@ -35,8 +35,15 @@ class BatteryTrackingEntity(CoordinatorEntity[BatteryMonitorCoordinator]):
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Group tracking controls under one logical device per battery."""
+        """Attach tracking controls to the physical device being monitored."""
         device = self.tracked_device
+        if device and (device["device_identifiers"] or device["device_connections"]):
+            return DeviceInfo(
+                identifiers=device["device_identifiers"],
+                connections=device["device_connections"],
+            )
+
+        # Entities without a registry device still need a stable container.
         name = device["name"] if device else "Unavailable battery device"
         return DeviceInfo(
             identifiers={(DOMAIN, self.tracking_id)},
