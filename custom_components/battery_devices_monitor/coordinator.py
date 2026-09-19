@@ -39,6 +39,7 @@ class BatteryTrackingRecord(TypedDict):
 
     installed_at: str
     battery_type: str
+    battery_number: int | None
     source_ids: list[str]
 
 
@@ -73,10 +74,19 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
                 continue
             installed_at = value.get("installed_at")
             battery_type = value.get("battery_type", "")
+            battery_number = value.get("battery_number")
             source_ids = value.get("source_ids", [])
             if (
                 isinstance(installed_at, str)
                 and isinstance(battery_type, str)
+                and (
+                    battery_number is None
+                    or (
+                        isinstance(battery_number, int)
+                        and not isinstance(battery_number, bool)
+                        and 1 <= battery_number <= 16
+                    )
+                )
                 and isinstance(source_ids, list)
                 and all(isinstance(source_id, str) for source_id in source_ids)
             ):
@@ -87,6 +97,7 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
                 self._tracking_records[tracking_id] = {
                     "installed_at": installed_at,
                     "battery_type": battery_type,
+                    "battery_number": battery_number,
                     "source_ids": source_ids,
                 }
 
@@ -148,9 +159,20 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
                 record = {
                     "installed_at": datetime.now(UTC).isoformat(),
                     "battery_type": "",
+                    "battery_number": None,
                     "source_ids": [],
                 }
                 self._tracking_records[tracking_id] = record
+                changed = True
+
+            detected_type = device.get("battery_type")
+            if not record["battery_type"] and detected_type:
+                record["battery_type"] = detected_type
+                changed = True
+
+            detected_number = device.get("battery_number")
+            if record["battery_number"] is None and detected_number:
+                record["battery_number"] = detected_number
                 changed = True
 
             normalized_aliases = sorted(aliases | set(record["source_ids"]))
@@ -182,6 +204,11 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
         record = self._tracking_records.get(tracking_id)
         return record["battery_type"] if record else ""
 
+    def battery_number(self, tracking_id: str) -> int | None:
+        """Return the detected or user-selected battery count."""
+        record = self._tracking_records.get(tracking_id)
+        return record["battery_number"] if record else None
+
     def battery_age_days(self, tracking_id: str) -> int | None:
         """Return complete days since the battery counter was started."""
         record = self._tracking_records.get(tracking_id)
@@ -192,8 +219,18 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
             installed_at = installed_at.replace(tzinfo=UTC)
         return max(0, (datetime.now(UTC) - installed_at).days)
 
-    async def async_reset_battery_age(self, tracking_id: str) -> None:
-        """Restart a device's battery-duration counter at zero days."""
+    def last_battery_change(self, tracking_id: str) -> datetime | None:
+        """Return the timestamp of the last recorded battery change."""
+        record = self._tracking_records.get(tracking_id)
+        if record is None:
+            return None
+        changed_at = datetime.fromisoformat(record["installed_at"])
+        return (
+            changed_at.replace(tzinfo=UTC) if changed_at.tzinfo is None else changed_at
+        )
+
+    async def async_record_battery_change(self, tracking_id: str) -> None:
+        """Record the current time as a device's latest battery change."""
         async with self._storage_lock:
             record = self._tracking_records.get(tracking_id)
             if record is None:
@@ -209,6 +246,18 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
             if record is None:
                 return
             record["battery_type"] = value.strip()
+            await self._async_save_tracking()
+        self.async_update_listeners()
+
+    async def async_set_battery_number(
+        self, tracking_id: str, value: int | None
+    ) -> None:
+        """Persist the number of batteries required by a device."""
+        async with self._storage_lock:
+            record = self._tracking_records.get(tracking_id)
+            if record is None:
+                return
+            record["battery_number"] = value
             await self._async_save_tracking()
         self.async_update_listeners()
 

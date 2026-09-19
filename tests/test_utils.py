@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -71,6 +72,29 @@ def test_percentage_wins_over_low_entity_on_same_device() -> None:
         "binary_sensor.august_battery_low",
         "sensor.august_battery",
     ]
+
+
+def test_battery_type_and_device_identity_are_preserved() -> None:
+    """Deduplicated data exposes metadata needed by tracking entities."""
+    source = _source(
+        "sensor.lock_battery",
+        device_id="lock",
+        integration="august",
+        level=64,
+        priority=500,
+    )
+    source = replace(
+        source,
+        battery_type="CR123A",
+        battery_number=2,
+        device_identifiers=frozenset({("august", "LOCK-1")}),
+    )
+
+    device = deduplicate_sources([source])["lock"]
+
+    assert device["battery_type"] == "CR123A"
+    assert device["battery_number"] == 2
+    assert device["device_identifiers"] == {("august", "LOCK-1")}
 
 
 def test_shared_hardware_identifier_merges_cross_integration_devices() -> None:

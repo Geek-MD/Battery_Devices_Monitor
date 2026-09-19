@@ -28,7 +28,12 @@ if TYPE_CHECKING:
 
 type BatteryMonitorConfigEntry = ConfigEntry[BatteryMonitorCoordinator]
 
-PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR, Platform.TEXT]
+PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.TEXT,
+]
 _ENTITY_SERVICE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 
 

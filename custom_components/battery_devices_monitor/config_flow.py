@@ -137,7 +137,7 @@ def _create_devices_schema(
 class FlowHandler(
     config_entries.ConfigFlow,
     domain=DOMAIN,
-):
+):  # type: ignore[call-arg]
     """Handle a config flow for Battery Devices Monitor."""
 
     VERSION = 1

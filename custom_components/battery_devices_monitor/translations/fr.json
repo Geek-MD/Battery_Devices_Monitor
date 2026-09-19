@@ -55,18 +55,26 @@
       "rescan": {
         "name": "Réanalyser les périphériques à batterie"
       },
-      "reset_battery_age": {
-        "name": "Réinitialiser l'âge de la batterie"
+      "battery_changed": {
+        "name": "Batterie remplacée"
       }
     },
     "sensor": {
-      "battery_age": {
-        "name": "Âge de la batterie"
+      "last_battery_change": {
+        "name": "Dernier remplacement de la batterie"
       }
     },
     "text": {
       "battery_type": {
         "name": "Type de batterie"
+      }
+    },
+    "select": {
+      "battery_type": {
+        "name": "Type de batterie"
+      },
+      "battery_number": {
+        "name": "Nombre de piles"
       }
     }
   },

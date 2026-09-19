@@ -33,40 +33,40 @@ async def async_setup_entry(
     known_tracking_ids: set[str] = set()
 
     @callback
-    def async_add_reset_buttons() -> None:
-        """Add a reset button for every newly discovered physical device."""
+    def async_add_battery_changed_buttons() -> None:
+        """Add a battery-changed button for every discovered device."""
         new_tracking_ids = set(coordinator.active_tracking_ids) - known_tracking_ids
         if not new_tracking_ids:
             return
         known_tracking_ids.update(new_tracking_ids)
         async_add_entities(
-            BatteryAgeResetButton(coordinator, tracking_id)
+            BatteryChangedButton(coordinator, tracking_id)
             for tracking_id in sorted(new_tracking_ids)
         )
 
     async_add_entities([RescanButton(config_entry)])
-    async_add_reset_buttons()
+    async_add_battery_changed_buttons()
     config_entry.async_on_unload(
-        coordinator.async_add_listener(async_add_reset_buttons)
+        coordinator.async_add_listener(async_add_battery_changed_buttons)
     )
 
 
-class BatteryAgeResetButton(BatteryTrackingEntity, ButtonEntity):
-    """Reset one physical device's battery-duration counter."""
+class BatteryChangedButton(BatteryTrackingEntity, ButtonEntity):
+    """Record that a physical device's battery was changed."""
 
-    _attr_translation_key = "reset_battery_age"
+    _attr_translation_key = "battery_changed"
     _attr_icon = "mdi:battery-sync"
 
     def __init__(
         self, coordinator: BatteryMonitorCoordinator, tracking_id: str
     ) -> None:
-        """Initialize the reset button."""
+        """Initialize the battery changed button."""
         super().__init__(coordinator, tracking_id)
         self._attr_unique_id = f"{DOMAIN}_{tracking_id}_reset_battery_age"
 
     async def async_press(self) -> None:
-        """Restart the associated battery-duration counter."""
-        await self.coordinator.async_reset_battery_age(self.tracking_id)
+        """Record the current time as the associated battery change."""
+        await self.coordinator.async_record_battery_change(self.tracking_id)
 
 
 class RescanButton(ButtonEntity):

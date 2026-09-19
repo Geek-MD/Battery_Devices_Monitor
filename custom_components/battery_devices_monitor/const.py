@@ -8,6 +8,46 @@ DOMAIN: Final = "battery_devices_monitor"
 STORAGE_VERSION: Final = 1
 STORAGE_KEY: Final = f"{DOMAIN}.battery_tracking"
 MAX_BATTERY_TYPE_LENGTH: Final = 100
+UNKNOWN_BATTERY_TYPE: Final = "unknown"
+BATTERY_TYPE_OPTIONS: Final[tuple[str, ...]] = (
+    UNKNOWN_BATTERY_TYPE,
+    "AAA",
+    "2x AAA",
+    "3x AAA",
+    "AA",
+    "2x AA",
+    "3x AA",
+    "4x AA",
+    "AAAA",
+    "9V",
+    "A23",
+    "CR123A",
+    "CR2",
+    "CR2032",
+    "CR2025",
+    "CR2016",
+    "LR44",
+    "Li-ion",
+    "Rechargeable",
+)
+
+# Attributes commonly published by device integrations for battery chemistry/size.
+BATTERY_TYPE_ATTRS: Final[tuple[str, ...]] = (
+    "battery_type",
+    "battery_size",
+    "battery_model",
+    "battery_format",
+)
+BATTERY_NUMBER_ATTRS: Final[tuple[str, ...]] = (
+    "battery_number",
+    "battery_count",
+    "battery_quantity",
+    "number_of_batteries",
+)
+BATTERY_NUMBER_OPTIONS: Final[tuple[str, ...]] = (
+    UNKNOWN_BATTERY_TYPE,
+    *(str(number) for number in range(1, 17)),
+)
 
 # Configuration keys
 CONF_BATTERY_THRESHOLD: Final = "battery_threshold"
