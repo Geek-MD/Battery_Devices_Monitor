@@ -102,7 +102,7 @@ For every deduplicated physical device, Battery Devices Monitor attaches its tra
 
 - **Last battery change** (`sensor`): date and time when the current battery was first tracked or its replacement was last recorded.
 - **Battery changed** (`button`): press this after physically replacing the battery. The sensor immediately records the current date and time.
-- **Battery type** (`select`): a dropdown of common formats. The integration first imports a value exposed through `battery_type`, `battery_size`, `battery_model`, or `battery_format` metadata (including dedicated type/size/model entities); otherwise the user can select it manually. The legacy free-text field remains available for compatibility with version 2.1.0.
+- **Battery type** (`select`): a dropdown of common formats. The integration first imports a value exposed through `battery_type`, `battery_size`, `battery_model`, or `battery_format` metadata (including dedicated type/size/model entities); otherwise the user can select it manually.
 - **Battery number** (`select`): the number of batteries required by the device, from 1 to 16. The integration detects `battery_number`, `battery_count`, `battery_quantity`, or `number_of_batteries` metadata and dedicated entities; otherwise the user can choose it manually.
 
 The replacement timestamp, battery type, and known source aliases are stored persistently by Home Assistant. They survive restarts and remain linked when a device changes its selected battery entity or is deduplicated through another integration. Tracking entities are created for every discovered battery device, including devices excluded from threshold alerts.

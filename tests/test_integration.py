@@ -83,6 +83,38 @@ async def test_setup_deduplication_and_reactive_update(
         {"device_class": "battery", "friendly_name": "August battery low"},
     )
 
+    plug_entry = MockConfigEntry(domain="example_plug")
+    plug_entry.add_to_hass(hass)
+    plug_device = device_registry.async_get_or_create(
+        config_entry_id=plug_entry.entry_id,
+        identifiers={("example_plug", "PLUG-1")},
+        name="Mains plug",
+    )
+    entity_registry.async_get_or_create(
+        "sensor",
+        "example_plug",
+        "plug-battery",
+        suggested_object_id="mains_plug_battery",
+        device_id=plug_device.id,
+    )
+    entity_registry.async_get_or_create(
+        "sensor",
+        "example_plug",
+        "plug-info",
+        suggested_object_id="mains_plug_info",
+        device_id=plug_device.id,
+    )
+    hass.states.async_set(
+        "sensor.mains_plug_battery",
+        "100",
+        {"device_class": "battery", "unit_of_measurement": PERCENTAGE},
+    )
+    hass.states.async_set(
+        "sensor.mains_plug_info",
+        "online",
+        {"power_source": "Mains (single phase)"},
+    )
+
     events = []
     hass.bus.async_listen(EVENT_BATTERY_LOW, events.append)
     monitor_entry = MockConfigEntry(
@@ -92,8 +124,24 @@ async def test_setup_deduplication_and_reactive_update(
     )
     monitor_entry.add_to_hass(hass)
 
+    legacy_device = device_registry.async_get_or_create(
+        config_entry_id=monitor_entry.entry_id,
+        identifiers={(DOMAIN, "legacy-tracking-id")},
+        name="Ring battery tracking",
+    )
+    legacy_text = entity_registry.async_get_or_create(
+        "text",
+        DOMAIN,
+        f"{DOMAIN}_legacy-tracking-id_battery_type",
+        config_entry=monitor_entry,
+        device_id=legacy_device.id,
+    )
+
     assert await hass.config_entries.async_setup(monitor_entry.entry_id)
     await hass.async_block_till_done()
+
+    assert device_registry.async_get(legacy_device.id) is None
+    assert entity_registry.async_get(legacy_text.entity_id) is None
 
     state = hass.states.get("sensor.battery_monitor_status")
     assert state is not None
@@ -113,9 +161,6 @@ async def test_setup_deduplication_and_reactive_update(
     reset_entity_id = entity_registry.async_get_entity_id(
         "button", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_reset_battery_age"
     )
-    type_entity_id = entity_registry.async_get_entity_id(
-        "text", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_type"
-    )
     type_select_entity_id = entity_registry.async_get_entity_id(
         "select", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_type_select"
     )
@@ -124,12 +169,10 @@ async def test_setup_deduplication_and_reactive_update(
     )
     assert age_entity_id is not None
     assert reset_entity_id is not None
-    assert type_entity_id is not None
     assert type_select_entity_id is not None
     assert number_select_entity_id is not None
     assert entity_registry.async_get(age_entity_id).device_id == august_device.id
     assert entity_registry.async_get(reset_entity_id).device_id == august_device.id
-    assert entity_registry.async_get(type_entity_id).device_id == august_device.id
     assert (
         entity_registry.async_get(type_select_entity_id).device_id == august_device.id
     )
@@ -156,15 +199,6 @@ async def test_setup_deduplication_and_reactive_update(
         blocking=True,
     )
     assert hass.states.get(number_select_entity_id).state == "3"
-
-    await hass.services.async_call(
-        "text",
-        "set_value",
-        {ATTR_ENTITY_ID: type_entity_id, "value": "CR123A"},
-        blocking=True,
-    )
-    assert hass.states.get(type_entity_id).state == "CR123A"
-    assert hass.states.get(type_select_entity_id).state == "CR123A"
 
     coordinator._tracking_records[lock_tracking_id]["installed_at"] = (  # noqa: SLF001
         datetime.now(UTC) - timedelta(days=7)
@@ -241,6 +275,6 @@ async def test_setup_deduplication_and_reactive_update(
     await hass.async_block_till_done()
     reloaded_coordinator = monitor_entry.runtime_data
     assert lock_tracking_id in reloaded_coordinator.active_tracking_ids
-    assert hass.states.get(type_entity_id).state == "CR123A"
+    assert hass.states.get(type_select_entity_id).state == "2x AA"
     reloaded_change = datetime.fromisoformat(hass.states.get(age_entity_id).state)
     assert datetime.now(UTC) - reloaded_change < timedelta(minutes=1)
