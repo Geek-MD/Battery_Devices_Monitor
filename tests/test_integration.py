@@ -136,12 +136,35 @@ async def test_setup_deduplication_and_reactive_update(
         config_entry=monitor_entry,
         device_id=legacy_device.id,
     )
+    stale_tracking_entity = entity_registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{DOMAIN}_obsolete-tracking-id_battery_age",
+        config_entry=monitor_entry,
+        device_id=legacy_device.id,
+    )
+    # v2.1.1/v2.1.2 used DeviceInfo with identifiers owned by the source
+    # integration. This made Battery Devices Monitor claim the physical device
+    # (and could create a duplicate in a real registry).
+    device_registry.async_update_device(
+        august_device.id, add_config_entry_id=monitor_entry.entry_id
+    )
+    assert (
+        monitor_entry.entry_id
+        in device_registry.async_get(august_device.id).config_entries
+    )
 
     assert await hass.config_entries.async_setup(monitor_entry.entry_id)
     await hass.async_block_till_done()
 
     assert device_registry.async_get(legacy_device.id) is None
     assert entity_registry.async_get(legacy_text.entity_id) is None
+    assert entity_registry.async_get(stale_tracking_entity.entity_id) is None
+    assert monitor_entry.version == 2
+    assert (
+        monitor_entry.entry_id
+        not in device_registry.async_get(august_device.id).config_entries
+    )
 
     state = hass.states.get("sensor.battery_monitor_status")
     assert state is not None
@@ -183,14 +206,15 @@ async def test_setup_deduplication_and_reactive_update(
     assert datetime.now(UTC) - initial_change < timedelta(minutes=1)
     assert hass.states.get(type_select_entity_id).state == "CR123A"
     assert hass.states.get(number_select_entity_id).state == "2"
+    assert "2x AA" not in hass.states.get(type_select_entity_id).attributes["options"]
 
     await hass.services.async_call(
         "select",
         "select_option",
-        {ATTR_ENTITY_ID: type_select_entity_id, "option": "2x AA"},
+        {ATTR_ENTITY_ID: type_select_entity_id, "option": "AA"},
         blocking=True,
     )
-    assert hass.states.get(type_select_entity_id).state == "2x AA"
+    assert hass.states.get(type_select_entity_id).state == "AA"
 
     await hass.services.async_call(
         "select",
@@ -275,6 +299,6 @@ async def test_setup_deduplication_and_reactive_update(
     await hass.async_block_till_done()
     reloaded_coordinator = monitor_entry.runtime_data
     assert lock_tracking_id in reloaded_coordinator.active_tracking_ids
-    assert hass.states.get(type_select_entity_id).state == "2x AA"
+    assert hass.states.get(type_select_entity_id).state == "AA"
     reloaded_change = datetime.fromisoformat(hass.states.get(age_entity_id).state)
     assert datetime.now(UTC) - reloaded_change < timedelta(minutes=1)

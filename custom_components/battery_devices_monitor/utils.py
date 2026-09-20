@@ -491,6 +491,10 @@ def _device_data(sources: list[BatterySource]) -> dict[str, Any]:
         "source_integrations": sorted({source.integration for source in sources}),
         "battery_type": battery_type,
         "battery_number": battery_number,
+        # Keep the actual registry target. Tracking entities use this ID
+        # directly instead of advertising foreign identifiers through
+        # DeviceInfo, which could create/claim a second device.
+        "device_id": registry_source.device_id,
         "device_identifiers": set(registry_source.device_identifiers),
         "device_connections": set(registry_source.device_connections),
     }

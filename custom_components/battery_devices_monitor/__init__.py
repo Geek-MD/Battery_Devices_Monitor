@@ -17,6 +17,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import (
     ATTR_DEVICES_BELOW_THRESHOLD,
     ATTR_DEVICES_WITHOUT_BATTERY_INFO,
+    CONFIG_ENTRY_VERSION,
     DOMAIN,
     SERVICE_GET_DEVICES_WITHOUT_BATTERY_INFO,
     SERVICE_GET_LOW_BATTERY_DEVICES,
@@ -128,7 +129,7 @@ async def async_setup_entry(
     entry.runtime_data = coordinator
     coordinator.async_start()
 
-    _remove_legacy_tracking_registry_entries(hass, entry)
+    _remove_legacy_tracking_registry_entries(hass, entry, coordinator)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -136,28 +137,81 @@ async def async_setup_entry(
 
 
 def _remove_legacy_tracking_registry_entries(
-    hass: HomeAssistant, entry: BatteryMonitorConfigEntry
+    hass: HomeAssistant,
+    entry: BatteryMonitorConfigEntry,
+    coordinator: BatteryMonitorCoordinator | None = None,
 ) -> None:
-    """Remove v2.1.0/2.1.1 text entities and synthetic tracking devices.
+    """Remove obsolete entities and every device incorrectly claimed by us.
 
     Entity registry records are retained when a platform is removed.  Removing
-    the obsolete records here also detaches the remaining tracking entities
-    from the synthetic device so Home Assistant can associate them with their
-    real source device during platform setup.
+    the obsolete records here also removes the config-entry association which
+    v2.1.1/2.1.2 added to source devices by returning their identifiers in
+    ``DeviceInfo``. Only the integration's own monitor device is retained.
     """
     entity_registry = er.async_get(hass)
     device_registry = dr.async_get(hass)
 
+    active_tracking_unique_ids = (
+        {
+            unique_id
+            for tracking_id in coordinator.active_tracking_ids
+            for unique_id in (
+                f"{DOMAIN}_{tracking_id}_battery_age",
+                f"{DOMAIN}_{tracking_id}_reset_battery_age",
+                f"{DOMAIN}_{tracking_id}_battery_type_select",
+                f"{DOMAIN}_{tracking_id}_battery_number",
+            )
+        }
+        if coordinator
+        else None
+    )
+    tracking_suffixes = (
+        "_battery_age",
+        "_reset_battery_age",
+        "_battery_type_select",
+        "_battery_number",
+    )
     for entity in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
         if entity.domain == Platform.TEXT:
             entity_registry.async_remove(entity.entity_id)
-
-    for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
-        if any(
-            domain == DOMAIN and identifier != entry.entry_id
-            for domain, identifier in device.identifiers
+        elif (
+            active_tracking_unique_ids is not None
+            and entity.unique_id.startswith(f"{DOMAIN}_")
+            and entity.unique_id.endswith(tracking_suffixes)
+            and entity.unique_id not in active_tracking_unique_ids
         ):
+            entity_registry.async_remove(entity.entity_id)
+
+    monitor_identifier = (DOMAIN, entry.entry_id)
+    for device in list(
+        dr.async_entries_for_config_entry(device_registry, entry.entry_id)
+    ):
+        if monitor_identifier in device.identifiers:
+            continue
+        if any(domain == DOMAIN for domain, _identifier in device.identifiers):
             device_registry.async_remove_device(device.id)
+            continue
+
+        # Do not delete a real device owned by another integration. Merely
+        # detach Battery Devices Monitor; the tracking entities are assigned
+        # directly to this device after their platform setup.
+        device_registry.async_update_device(
+            device.id, remove_config_entry_id=entry.entry_id
+        )
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: BatteryMonitorConfigEntry
+) -> bool:
+    """Migrate registry artifacts created by releases before v2.1.3."""
+    if entry.version > CONFIG_ENTRY_VERSION:
+        return False
+
+    if entry.version < CONFIG_ENTRY_VERSION:
+        _remove_legacy_tracking_registry_entries(hass, entry)
+        hass.config_entries.async_update_entry(entry, version=CONFIG_ENTRY_VERSION)
+
+    return True
 
 
 async def async_unload_entry(

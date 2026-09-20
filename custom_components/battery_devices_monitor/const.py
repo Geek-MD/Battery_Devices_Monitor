@@ -3,6 +3,7 @@
 from typing import Final
 
 DOMAIN: Final = "battery_devices_monitor"
+CONFIG_ENTRY_VERSION: Final = 2
 
 # Persistent per-device battery tracking
 STORAGE_VERSION: Final = 1
@@ -12,12 +13,7 @@ UNKNOWN_BATTERY_TYPE: Final = "unknown"
 BATTERY_TYPE_OPTIONS: Final[tuple[str, ...]] = (
     UNKNOWN_BATTERY_TYPE,
     "AAA",
-    "2x AAA",
-    "3x AAA",
     "AA",
-    "2x AA",
-    "3x AA",
-    "4x AA",
     "AAAA",
     "9V",
     "A23",
