@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Battery type choices no longer duplicate quantity (for example, `3x AA`); legacy combined values are migrated to battery type `AA` and battery number `3`.
 - Every setup removes obsolete tracking entities and synthetic devices, then active tracking entities are reassigned to the original August, ZHA, or other owning integration device. This idempotent cleanup also repairs installations which already attempted to load v2.1.3.
 - Reloads recover each device's existing tracking ID from the entity registry when registry cleanup changes its discovery aliases, preventing duplicate tracking entities and preserving stored battery metadata.
+- Entities created by Battery Devices Monitor are excluded from battery discovery even when attached to a real device, preventing recursive discovery and tracking-ID replacement on refresh or reload.
 
 ## [2.1.2] - 2026-09-19
 
