@@ -12,12 +12,7 @@ UNKNOWN_BATTERY_TYPE: Final = "unknown"
 BATTERY_TYPE_OPTIONS: Final[tuple[str, ...]] = (
     UNKNOWN_BATTERY_TYPE,
     "AAA",
-    "2x AAA",
-    "3x AAA",
     "AA",
-    "2x AA",
-    "3x AA",
-    "4x AA",
     "AAAA",
     "9V",
     "A23",

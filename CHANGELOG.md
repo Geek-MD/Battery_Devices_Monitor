@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-09-20
+
+### Fixed
+- Per-device tracking entities are now assigned directly to each existing Home Assistant device, without exposing foreign identifiers through `DeviceInfo` or registering additional devices under Battery Devices Monitor.
+- Migration removes legacy synthetic tracking devices and detaches Battery Devices Monitor from physical devices incorrectly claimed by versions 2.1.1 and 2.1.2, while preserving those devices under their original integrations.
+- Battery type choices no longer duplicate quantity (for example, `3x AA`); legacy combined values are migrated to battery type `AA` and battery number `3`.
+- Every setup removes obsolete tracking entities and synthetic devices, then active tracking entities are reassigned to the original August, ZHA, or other owning integration device. This idempotent cleanup also repairs installations which already attempted to load v2.1.3.
+- Reloads recover each device's existing tracking ID from the entity registry when registry cleanup changes its discovery aliases, preventing duplicate tracking entities and preserving stored battery metadata.
+- Entities created by Battery Devices Monitor are excluded from battery discovery even when attached to a real device, preventing recursive discovery and tracking-ID replacement on refresh or reload.
+
 ## [2.1.2] - 2026-09-19
 
 ### Fixed

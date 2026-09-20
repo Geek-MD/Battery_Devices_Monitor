@@ -323,6 +323,13 @@ def _source_from_state(
         return None
 
     entity_entry = entity_registry.async_get(state.entity_id)
+    # Tracking entities contain "battery" in their IDs and are deliberately
+    # attached to the source device. Never rediscover our own timestamp,
+    # button, or select entities as new battery sources; doing so changes the
+    # physical-device groups and replaces their persistent tracking IDs.
+    if entity_entry and entity_entry.platform == DOMAIN:
+        return None
+
     device_id = entity_entry.device_id if entity_entry else None
     device_entry = device_registry.async_get(device_id) if device_id else None
 
@@ -491,6 +498,10 @@ def _device_data(sources: list[BatterySource]) -> dict[str, Any]:
         "source_integrations": sorted({source.integration for source in sources}),
         "battery_type": battery_type,
         "battery_number": battery_number,
+        # Keep the actual registry target. Tracking entities use this ID
+        # directly instead of advertising foreign identifiers through
+        # DeviceInfo, which could create/claim a second device.
+        "device_id": registry_source.device_id,
         "device_identifiers": set(registry_source.device_identifiers),
         "device_connections": set(registry_source.device_connections),
     }
