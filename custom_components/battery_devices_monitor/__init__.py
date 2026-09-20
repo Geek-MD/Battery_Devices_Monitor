@@ -17,7 +17,6 @@ from homeassistant.helpers.typing import ConfigType
 from .const import (
     ATTR_DEVICES_BELOW_THRESHOLD,
     ATTR_DEVICES_WITHOUT_BATTERY_INFO,
-    CONFIG_ENTRY_VERSION,
     DOMAIN,
     SERVICE_GET_DEVICES_WITHOUT_BATTERY_INFO,
     SERVICE_GET_LOW_BATTERY_DEVICES,
@@ -198,20 +197,6 @@ def _remove_legacy_tracking_registry_entries(
         device_registry.async_update_device(
             device.id, remove_config_entry_id=entry.entry_id
         )
-
-
-async def async_migrate_entry(
-    hass: HomeAssistant, entry: BatteryMonitorConfigEntry
-) -> bool:
-    """Migrate registry artifacts created by releases before v2.1.3."""
-    if entry.version > CONFIG_ENTRY_VERSION:
-        return False
-
-    if entry.version < CONFIG_ENTRY_VERSION:
-        _remove_legacy_tracking_registry_entries(hass, entry)
-        hass.config_entries.async_update_entry(entry, version=CONFIG_ENTRY_VERSION)
-
-    return True
 
 
 async def async_unload_entry(

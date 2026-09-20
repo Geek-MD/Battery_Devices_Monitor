@@ -3,7 +3,6 @@
 from typing import Final
 
 DOMAIN: Final = "battery_devices_monitor"
-CONFIG_ENTRY_VERSION: Final = 2
 
 # Persistent per-device battery tracking
 STORAGE_VERSION: Final = 1

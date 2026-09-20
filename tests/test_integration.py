@@ -160,7 +160,6 @@ async def test_setup_deduplication_and_reactive_update(
     assert device_registry.async_get(legacy_device.id) is None
     assert entity_registry.async_get(legacy_text.entity_id) is None
     assert entity_registry.async_get(stale_tracking_entity.entity_id) is None
-    assert monitor_entry.version == 2
     assert (
         monitor_entry.entry_id
         not in device_registry.async_get(august_device.id).config_entries

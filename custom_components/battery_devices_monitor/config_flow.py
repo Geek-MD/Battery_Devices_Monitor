@@ -12,7 +12,6 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import selector
 
 from .const import (
-    CONFIG_ENTRY_VERSION,
     CONF_BATTERY_THRESHOLD,
     CONF_EXCLUDED_DEVICES,
     DEFAULT_BATTERY_THRESHOLD,
@@ -141,7 +140,7 @@ class FlowHandler(
 ):
     """Handle a config flow for Battery Devices Monitor."""
 
-    VERSION = CONFIG_ENTRY_VERSION
+    VERSION = 1
 
     def __init__(self) -> None:
         """Initialize the config flow."""
