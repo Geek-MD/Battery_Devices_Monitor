@@ -18,6 +18,7 @@ from homeassistant.helpers.entity_registry import (
     EVENT_ENTITY_REGISTRY_UPDATED,
     EventEntityRegistryUpdatedData,
 )
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import (
     async_track_state_added_domain,
     async_track_state_change_event,
@@ -152,6 +153,41 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
             *device.get("source_entity_ids", []),
         }
 
+    def _registry_tracking_ids(self, device: dict[str, Any]) -> set[str]:
+        """Return persisted tracking IDs already attached to a source device.
+
+        Device-registry cleanup can change the aliases visible during the next
+        reload. The entity registry remains the authoritative link between our
+        tracking entities and the physical device, so use it as a fallback
+        before allocating another tracking ID.
+        """
+        source_device_id = device.get("device_id")
+        if not source_device_id:
+            return set()
+
+        prefix = f"{DOMAIN}_"
+        suffixes = (
+            "_battery_age",
+            "_reset_battery_age",
+            "_battery_type_select",
+            "_battery_number",
+        )
+        entity_registry = er.async_get(self.hass)
+        tracking_ids: set[str] = set()
+        for entity in er.async_entries_for_device(
+            entity_registry, source_device_id, include_disabled_entities=True
+        ):
+            if (
+                entity.config_entry_id != self.entry.entry_id
+                or not entity.unique_id.startswith(prefix)
+            ):
+                continue
+            for suffix in suffixes:
+                if entity.unique_id.endswith(suffix):
+                    tracking_ids.add(entity.unique_id[len(prefix) : -len(suffix)])
+                    break
+        return tracking_ids
+
     def _reconcile_tracking(self, data: BatteryDeviceData) -> bool:
         """Match current devices to persisted records across source changes."""
         changed = False
@@ -165,6 +201,10 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
                 for tracking_id in unused_tracking_ids
                 if aliases & set(self._tracking_records[tracking_id]["source_ids"])
             ]
+            if not matches:
+                matches = sorted(
+                    self._registry_tracking_ids(device) & unused_tracking_ids
+                )
 
             if matches:
                 tracking_id = max(

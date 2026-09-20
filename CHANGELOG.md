@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migration removes legacy synthetic tracking devices and detaches Battery Devices Monitor from physical devices incorrectly claimed by versions 2.1.1 and 2.1.2, while preserving those devices under their original integrations.
 - Battery type choices no longer duplicate quantity (for example, `3x AA`); legacy combined values are migrated to battery type `AA` and battery number `3`.
 - Every setup removes obsolete tracking entities and synthetic devices, then active tracking entities are reassigned to the original August, ZHA, or other owning integration device. This idempotent cleanup also repairs installations which already attempted to load v2.1.3.
+- Reloads recover each device's existing tracking ID from the entity registry when registry cleanup changes its discovery aliases, preventing duplicate tracking entities and preserving stored battery metadata.
 
 ## [2.1.2] - 2026-09-19
 
