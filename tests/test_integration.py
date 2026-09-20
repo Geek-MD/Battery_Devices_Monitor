@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from homeassistant.const import ATTR_ENTITY_ID, PERCENTAGE
 from homeassistant.core import HomeAssistant
@@ -26,9 +27,11 @@ from custom_components.battery_devices_monitor.const import (
 
 
 async def test_setup_deduplication_and_reactive_update(
-    hass: HomeAssistant, enable_custom_integrations: None
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    hass_storage: dict[str, Any],
 ) -> None:
-    """Set up, deduplicate cross-integration sources, and react to changes."""
+    """Set up, deduplicate, persist tracking, and react to changes."""
     area_registry = ar.async_get(hass)
     area = area_registry.async_create("Entrance")
 
