@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -11,10 +12,33 @@ from homeassistant.core import State
 
 from custom_components.battery_devices_monitor.utils import (
     BatterySource,
+    _declares_mains_power,
     deduplicate_sources,
     get_battery_level,
     has_battery_but_unavailable,
 )
+
+
+@pytest.mark.parametrize(
+    "attributes",
+    [
+        {"battery_powered": False},
+        {"battery_powered": "no"},
+        {"power_source": "Mains (single phase)"},
+        {"power_supply": "AC"},
+        {"power_type": "wired"},
+    ],
+)
+def test_explicit_mains_power_metadata_is_excluded(attributes: dict[str, Any]) -> None:
+    """Explicit non-battery power metadata must prevent false discovery."""
+    assert _declares_mains_power(State("sensor.plug_battery", "100", attributes))
+
+
+def test_battery_power_metadata_is_not_excluded() -> None:
+    """Battery-powered metadata remains eligible for discovery."""
+    assert not _declares_mains_power(
+        State("sensor.remote_battery", "100", {"power_source": "battery"})
+    )
 
 
 def _source(
@@ -71,6 +95,29 @@ def test_percentage_wins_over_low_entity_on_same_device() -> None:
         "binary_sensor.august_battery_low",
         "sensor.august_battery",
     ]
+
+
+def test_battery_type_and_device_identity_are_preserved() -> None:
+    """Deduplicated data exposes metadata needed by tracking entities."""
+    source = _source(
+        "sensor.lock_battery",
+        device_id="lock",
+        integration="august",
+        level=64,
+        priority=500,
+    )
+    source = replace(
+        source,
+        battery_type="CR123A",
+        battery_number=2,
+        device_identifiers=frozenset({("august", "LOCK-1")}),
+    )
+
+    device = deduplicate_sources([source])["lock"]
+
+    assert device["battery_type"] == "CR123A"
+    assert device["battery_number"] == 2
+    assert device["device_identifiers"] == {("august", "LOCK-1")}
 
 
 def test_shared_hardware_identifier_merges_cross_integration_devices() -> None:

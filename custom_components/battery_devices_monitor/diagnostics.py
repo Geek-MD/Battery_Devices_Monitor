@@ -55,6 +55,11 @@ async def async_get_config_entry_diagnostics(
                 "battery_type": (
                     entry.runtime_data.battery_type(tracking_id) if tracking_id else ""
                 ),
+                "battery_number": (
+                    entry.runtime_data.battery_number(tracking_id)
+                    if tracking_id
+                    else None
+                ),
             }
         )
 
