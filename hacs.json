@@ -1,5 +1,5 @@
 {
   "name": "Battery Devices Monitor",
   "hacs": "1.6.0",
-  "homeassistant": "2024.4.0"
+  "homeassistant": "2026.9.0"
 }

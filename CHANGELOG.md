@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-10-08
+
+### Changed
+- Replaced the compatibility-layer `voluptuous` imports with direct `probatio` imports for config-flow and service-action schema validation.
+- Replaced the Voluptuous development dependency with Probatio 0.11.4 and aligned the test environment with Home Assistant 2026.9.
+- Minimum supported Home Assistant version is now 2026.9.0, the first release that uses Probatio as its validation engine.
+
+### Fixed
+- Preserved the established `sensor.battery_monitor_status` entity ID on clean installations under Home Assistant 2026.9's entity naming rules.
+- Handled Home Assistant child device registry entries without reading the parent-only `connections` attribute.
+
 ## [2.1.3] - 2026-09-20
 
 ### Fixed

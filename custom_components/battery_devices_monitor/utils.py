@@ -226,13 +226,18 @@ def _normalize_label(value: str | None) -> str:
     return " ".join(value.casefold().split())
 
 
-def _hardware_keys(device_entry: dr.DeviceEntry | None) -> frozenset[str]:
+def _hardware_keys(
+    device_entry: dr.DeviceEntry | dr.ChildDeviceEntry | None,
+) -> frozenset[str]:
     """Return cross-integration identity keys from the device registry."""
     if device_entry is None:
         return frozenset()
 
     keys: set[str] = set()
-    for connection_type, value in device_entry.connections:
+    connections = (
+        device_entry.connections if isinstance(device_entry, dr.DeviceEntry) else ()
+    )
+    for connection_type, value in connections:
         normalized = _normalize_identifier(value)
         if normalized:
             keys.add(f"connection:{connection_type}:{normalized}")
@@ -248,7 +253,7 @@ def _hardware_keys(device_entry: dr.DeviceEntry | None) -> frozenset[str]:
 
 
 def _zigbee_info(
-    hass: HomeAssistant, device_entry: dr.DeviceEntry | None
+    hass: HomeAssistant, device_entry: dr.DeviceEntry | dr.ChildDeviceEntry | None
 ) -> tuple[bool, str | None]:
     """Return whether a device is Zigbee and its best available identifier."""
     if device_entry is None:
@@ -372,7 +377,7 @@ def _source_from_state(
         if device_entry
         else frozenset(),
         device_connections=frozenset(device_entry.connections)
-        if device_entry
+        if isinstance(device_entry, dr.DeviceEntry)
         else frozenset(),
     )
 

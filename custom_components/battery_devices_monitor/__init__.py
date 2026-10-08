@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import ServiceCall, ServiceResponse, SupportsResponse
@@ -13,6 +11,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.typing import ConfigType
+import probatio as vol
 
 from .const import (
     ATTR_DEVICES_BELOW_THRESHOLD,
@@ -100,14 +99,14 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         DOMAIN,
         SERVICE_GET_LOW_BATTERY_DEVICES,
         get_low_battery_devices,
-        schema=_ENTITY_SERVICE_SCHEMA,
+        schema=_ENTITY_SERVICE_SCHEMA,  # type: ignore[arg-type]
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_DEVICES_WITHOUT_BATTERY_INFO,
         get_devices_without_battery_info,
-        schema=_ENTITY_SERVICE_SCHEMA,
+        schema=_ENTITY_SERVICE_SCHEMA,  # type: ignore[arg-type]
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(

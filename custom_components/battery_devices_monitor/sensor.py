@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from datetime import datetime
 
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -100,6 +101,7 @@ class BatteryMonitorSensor(CoordinatorEntity[BatteryMonitorCoordinator], SensorE
         """Initialize the sensor."""
         super().__init__(config_entry.runtime_data)
         self._config_entry = config_entry
+        self.entity_id = f"{SENSOR_DOMAIN}.battery_monitor_status"
         self._attr_unique_id = f"{DOMAIN}_sensor"
         self._state = STATE_OK
         self._devices_below_threshold: list[dict[str, Any]] = []
