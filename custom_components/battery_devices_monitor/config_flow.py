@@ -5,11 +5,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import selector
+import probatio as vol
 
 from .const import (
     CONF_BATTERY_THRESHOLD,
@@ -78,7 +78,7 @@ def _create_threshold_schema(default_value: int) -> vol.Schema:
         default_value: Default threshold value (1-100)
 
     Returns:
-        A voluptuous Schema object for threshold configuration
+        A Probatio Schema object for threshold configuration
     """
     return vol.Schema(
         {
@@ -108,7 +108,7 @@ def _create_devices_schema(
         default_excluded: List of currently excluded device IDs
 
     Returns:
-        A voluptuous Schema object for device selection
+        A Probatio Schema object for device selection
     """
     # Filter excluded devices to only include those that still exist
     # This prevents 500 errors when devices have been removed from HA
@@ -182,7 +182,7 @@ class FlowHandler(
 
         return self.async_show_form(
             step_id="user",
-            data_schema=data_schema,
+            data_schema=data_schema,  # type: ignore[arg-type]
             errors=errors,
         )
 
@@ -232,7 +232,7 @@ class FlowHandler(
 
         return self.async_show_form(
             step_id="exclude_devices",
-            data_schema=data_schema,
+            data_schema=data_schema,  # type: ignore[arg-type]
             errors=errors,
         )
 
@@ -317,6 +317,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=data_schema,
+            data_schema=data_schema,  # type: ignore[arg-type]
             errors=errors,
         )

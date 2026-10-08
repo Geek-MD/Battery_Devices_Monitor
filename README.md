@@ -34,11 +34,13 @@ A Home Assistant custom integration that monitors battery-powered devices, provi
 - ♻️ **Battery replacement button** that resets the corresponding lifetime counter to zero
 - ✏️ **Battery type field** for recording values such as `CR2032`, `2x AA`, or `Li-ion 18650`
 - 💾 Battery lifetime and type metadata persist across Home Assistant restarts and battery-source changes
+- ⚖️ Uses Probatio directly for config-flow and service-action schema validation
 - 🌐 Multi-language support (English, Spanish, French, Portuguese, and German)
 
 ## Installation
 
-Requires Home Assistant 2024.4.0 or newer.
+Requires Home Assistant 2026.9.0 or newer. This is the first Home Assistant release
+whose validation engine is Probatio.
 
 ### Manual Installation
 
@@ -438,6 +440,10 @@ Fired when a Zigbee device appears in `devices_without_battery_info`. This event
 ## Development
 
 The event-driven coordinator performs one discovery pass at startup and refreshes when a battery source or the entity/device registry changes. It stores runtime state in `ConfigEntry.runtime_data`, groups physical devices before classifying their battery level, and does not poll Home Assistant periodically. Per-device battery replacement dates, battery types, and source aliases are persisted in Home Assistant's `.storage` directory.
+
+Config-flow and service-action schemas import Probatio directly. Home Assistant 2026.9.0
+or newer is therefore required; older releases still depend on Voluptuous and are not
+supported by Battery Devices Monitor 2.2.0 and later.
 
 ### Known limitations
 
