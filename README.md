@@ -30,9 +30,9 @@ A Home Assistant custom integration that monitors battery-powered devices, provi
 - 🛠️ Services to get formatted lists of low battery / unavailable devices and to force a rescan
 - 🔄 On-demand rescan service to immediately re-discover battery entities after a device is reconfigured
 - 🔘 **Rescan button** on the device control page: a one-click button in the *Configuration* subsection that triggers an immediate rescan without leaving the UI
-- 📅 **Battery lifetime counter** for every deduplicated physical device, measured in complete days
-- ♻️ **Battery replacement button** that resets the corresponding lifetime counter to zero
-- ✏️ **Battery type field** for recording values such as `CR2032`, `2x AA`, or `Li-ion 18650`
+- 📅 **Last battery change** timestamp for every deduplicated physical device
+- ♻️ **Battery changed button** that records the current replacement date and time
+- 🔽 **Battery type and quantity detection**: reads common device metadata automatically and provides dropdowns for the battery format and the required number of batteries
 - 💾 Battery lifetime and type metadata persist across Home Assistant restarts and battery-source changes
 - ⚖️ Uses Probatio directly for config-flow and service-action schema validation
 - 🌐 Multi-language support (English, Spanish, French, Portuguese, and German)
@@ -100,15 +100,16 @@ All percentages must be finite and between 0 and 100. If equally reliable percen
 
 ### Battery lifetime and type tracking
 
-For every deduplicated physical device, Battery Devices Monitor creates a logical battery-tracking device with three entities:
+For every deduplicated physical device, Battery Devices Monitor assigns its tracking entities directly to the corresponding existing Home Assistant device. It does not create a Battery Devices Monitor device for each battery. Sources without a device-registry association keep their tracking entities unassigned:
 
-- **Battery age** (`sensor`): number of complete 24-hour days since the counter began or was last reset. It starts at zero when the device is first discovered and refreshes hourly.
-- **Reset battery age** (`button`): press this after physically replacing the battery. The sensor changes to zero immediately and begins counting the new battery's lifetime.
-- **Battery type** (`text`): a free-text field for the installed battery model or format, for example `CR2032`, `2x AA`, or `Li-ion 18650`.
+- **Last battery change** (`sensor`): date and time when the current battery was first tracked or its replacement was last recorded.
+- **Battery changed** (`button`): press this after physically replacing the battery. The sensor immediately records the current date and time.
+- **Battery type** (`select`): a dropdown of common formats without quantities (for example, `AA` rather than `3x AA`). The integration first imports a value exposed through `battery_type`, `battery_size`, `battery_model`, or `battery_format` metadata (including dedicated type/size/model entities); otherwise the user can select it manually.
+- **Battery number** (`select`): the number of batteries required by the device, from 1 to 16. The integration detects `battery_number`, `battery_count`, `battery_quantity`, or `number_of_batteries` metadata and dedicated entities; otherwise the user can choose it manually.
 
 The replacement timestamp, battery type, and known source aliases are stored persistently by Home Assistant. They survive restarts and remain linked when a device changes its selected battery entity or is deduplicated through another integration. Tracking entities are created for every discovered battery device, including devices excluded from threshold alerts.
 
-The initial counter starts when version 2.1.0 first discovers a device; the integration cannot infer when an already-installed battery was physically inserted. Press the reset button after installing a fresh battery to establish an accurate starting date.
+The initial timestamp is recorded when version 2.1.0 or later first discovers a device; the integration cannot infer when an already-installed battery was physically inserted. Press **Battery changed** after installing a fresh battery to establish an accurate date.
 
 **Example attribute structure:**
 ```json

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
 from .coordinator import BatteryMonitorCoordinator
 
 
@@ -33,14 +32,25 @@ class BatteryTrackingEntity(CoordinatorEntity[BatteryMonitorCoordinator]):
         """Return whether the physical device is currently discovered."""
         return super().available and self.tracked_device is not None
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Group tracking controls under one logical device per battery."""
+    async def async_added_to_hass(self) -> None:
+        """Assign this entity to the already existing physical device.
+
+        ``DeviceInfo`` is intentionally not used here.  Returning another
+        integration's identifiers from ``device_info`` makes the device
+        registry add this config entry to that device and, in some real-world
+        registries, can manufacture a duplicate device.  Updating the entity
+        registry's ``device_id`` is the same direct-assignment pattern used by
+        integrations which add helper entities to existing devices.
+        """
+        await super().async_added_to_hass()
         device = self.tracked_device
-        name = device["name"] if device else "Unavailable battery device"
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.tracking_id)},
-            name=f"{name} battery tracking",
-            manufacturer="Geek-MD",
-            model="Battery lifetime tracker",
-        )
+        source_device_id = device.get("device_id") if device else None
+        if source_device_id is None:
+            return
+
+        entity_registry = er.async_get(self.hass)
+        registry_entry = entity_registry.async_get(self.entity_id)
+        if registry_entry and registry_entry.device_id != source_device_id:
+            entity_registry.async_update_entity(
+                self.entity_id, device_id=source_device_id
+            )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import logging
 import math
 import re
@@ -18,6 +18,8 @@ from homeassistant.helpers import (
 from .const import (
     BATTERY_ATTRS,
     BATTERY_DEVICE_CLASS,
+    BATTERY_NUMBER_ATTRS,
+    BATTERY_TYPE_ATTRS,
     DOMAIN,
     EXCLUDED_ENTITY_DOMAINS,
     ZIGBEE_INTEGRATION_DOMAINS,
@@ -35,6 +37,8 @@ _NON_PERCENTAGE_MARKERS = ("battery_voltage", "battery_volts", "battery_health")
 _UNAVAILABLE_STATES = {"", "none", "unknown", "unavailable"}
 _BINARY_BATTERY_STATES = {"0", "1", "false", "low", "normal", "off", "on", "true"}
 _IDENTIFIER_NORMALIZER = re.compile(r"[^a-z0-9]")
+_POWER_SOURCE_ATTRS = ("power_source", "power_supply", "power_type")
+_MAINS_POWER_MARKERS = ("ac", "dc", "mains", "line", "wired")
 
 
 @dataclass(slots=True, frozen=True)
@@ -51,6 +55,10 @@ class BatterySource:
     is_zigbee: bool
     zigbee_identifier: str | None
     hardware_keys: frozenset[str]
+    battery_type: str | None = None
+    battery_number: int | None = None
+    device_identifiers: frozenset[tuple[str, str]] = frozenset()
+    device_connections: frozenset[tuple[str, str]] = frozenset()
 
     @property
     def source_id(self) -> str:
@@ -86,6 +94,31 @@ def should_exclude_entity(state: State) -> bool:
         state.entity_id.startswith(f"sensor.{DOMAIN}")
         or entity_domain in EXCLUDED_ENTITY_DOMAINS
     )
+
+
+def _declares_mains_power(state: State) -> bool:
+    """Return whether entity metadata explicitly says it is not battery powered."""
+    battery_powered = state.attributes.get("battery_powered")
+    if battery_powered is False or str(battery_powered).strip().casefold() in {
+        "0",
+        "false",
+        "no",
+    }:
+        return True
+
+    for attribute in _POWER_SOURCE_ATTRS:
+        value = state.attributes.get(attribute)
+        if value is None:
+            continue
+        normalized = str(value).strip().casefold()
+        if any(
+            normalized == marker
+            or normalized.startswith(f"{marker} ")
+            or normalized.startswith(f"{marker}(")
+            for marker in _MAINS_POWER_MARKERS
+        ):
+            return True
+    return False
 
 
 def _valid_percentage(value: Any) -> float | None:
@@ -238,6 +271,50 @@ def _zigbee_info(
     return False, None
 
 
+def _battery_type_from_state(state: State) -> str | None:
+    """Extract battery type metadata from an attribute or dedicated entity."""
+    battery_type = next(
+        (
+            str(state.attributes[attr]).strip()
+            for attr in BATTERY_TYPE_ATTRS
+            if state.attributes.get(attr) not in (None, "")
+        ),
+        None,
+    )
+    if battery_type is None and any(
+        marker in state.entity_id.casefold()
+        for marker in ("battery_type", "battery_size", "battery_model")
+    ):
+        state_type = str(state.state).strip()
+        if state_type.casefold() not in _UNAVAILABLE_STATES:
+            return state_type
+    return battery_type
+
+
+def _positive_battery_number(value: object) -> int | None:
+    """Return a practical positive battery count from device metadata."""
+    if isinstance(value, bool):
+        return None
+    try:
+        number = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return number if 1 <= number <= 16 else None
+
+
+def _battery_number_from_state(state: State) -> int | None:
+    """Extract the required number of batteries from an attribute or entity."""
+    for attribute in BATTERY_NUMBER_ATTRS:
+        if number := _positive_battery_number(state.attributes.get(attribute)):
+            return number
+    if any(marker in state.entity_id.casefold() for marker in BATTERY_NUMBER_ATTRS):
+        return _positive_battery_number(state.state)
+    if battery_type := _battery_type_from_state(state):
+        if match := re.match(r"^\s*(\d+)\s*[x×]", battery_type, re.IGNORECASE):
+            return _positive_battery_number(match.group(1))
+    return None
+
+
 def _source_from_state(
     hass: HomeAssistant,
     state: State,
@@ -251,6 +328,13 @@ def _source_from_state(
         return None
 
     entity_entry = entity_registry.async_get(state.entity_id)
+    # Tracking entities contain "battery" in their IDs and are deliberately
+    # attached to the source device. Never rediscover our own timestamp,
+    # button, or select entities as new battery sources; doing so changes the
+    # physical-device groups and replaces their persistent tracking IDs.
+    if entity_entry and entity_entry.platform == DOMAIN:
+        return None
+
     device_id = entity_entry.device_id if entity_entry else None
     device_entry = device_registry.async_get(device_id) if device_id else None
 
@@ -273,6 +357,8 @@ def _source_from_state(
         entity_entry.platform if entity_entry else state.entity_id.partition(".")[0]
     )
     is_zigbee, zigbee_identifier = _zigbee_info(hass, device_entry)
+    battery_type = _battery_type_from_state(state)
+    battery_number = _battery_number_from_state(state)
 
     return BatterySource(
         entity_id=state.entity_id,
@@ -285,6 +371,14 @@ def _source_from_state(
         is_zigbee=is_zigbee,
         zigbee_identifier=zigbee_identifier,
         hardware_keys=_hardware_keys(device_entry),
+        battery_type=battery_type,
+        battery_number=battery_number,
+        device_identifiers=frozenset(device_entry.identifiers)
+        if device_entry
+        else frozenset(),
+        device_connections=frozenset(device_entry.connections)
+        if device_entry
+        else frozenset(),
     )
 
 
@@ -377,6 +471,25 @@ def _device_data(sources: list[BatterySource]) -> dict[str, Any]:
     )
     canonical_id = device_ids[0] if device_ids else source_entity_ids[0]
     zigbee_source = next((source for source in sources if source.is_zigbee), selected)
+    registry_source = selected
+    if (
+        not registry_source.device_identifiers
+        and not registry_source.device_connections
+    ):
+        registry_source = next(
+            (
+                source
+                for source in sources
+                if source.device_identifiers or source.device_connections
+            ),
+            selected,
+        )
+    battery_type = next(
+        (source.battery_type for source in sources if source.battery_type), None
+    )
+    battery_number = next(
+        (source.battery_number for source in sources if source.battery_number), None
+    )
     return {
         "id": canonical_id,
         "name": selected.name,
@@ -388,6 +501,14 @@ def _device_data(sources: list[BatterySource]) -> dict[str, Any]:
         "source_ids": source_ids,
         "source_entity_ids": source_entity_ids,
         "source_integrations": sorted({source.integration for source in sources}),
+        "battery_type": battery_type,
+        "battery_number": battery_number,
+        # Keep the actual registry target. Tracking entities use this ID
+        # directly instead of advertising foreign identifiers through
+        # DeviceInfo, which could create/claim a second device.
+        "device_id": registry_source.device_id,
+        "device_identifiers": set(registry_source.device_identifiers),
+        "device_connections": set(registry_source.device_connections),
     }
 
 
@@ -416,19 +537,49 @@ async def discover_battery_devices(
     entity_registry = er.async_get(hass)
     device_registry = dr.async_get(hass)
     area_registry = ar.async_get(hass)
-    sources = [
-        source
-        for state in hass.states.async_all()
-        if (
-            source := _source_from_state(
-                hass,
-                state,
-                entity_registry,
-                device_registry,
-                area_registry,
-            )
+    states = hass.states.async_all()
+    mains_powered_device_ids = {
+        entity_entry.device_id
+        for state in states
+        if _declares_mains_power(state)
+        and (entity_entry := entity_registry.async_get(state.entity_id))
+        and entity_entry.device_id
+    }
+    sources: list[BatterySource] = []
+    for state in states:
+        entity_entry = entity_registry.async_get(state.entity_id)
+        if entity_entry and entity_entry.device_id in mains_powered_device_ids:
+            continue
+        source = _source_from_state(
+            hass,
+            state,
+            entity_registry,
+            device_registry,
+            area_registry,
         )
-        is not None
+        if source is not None:
+            sources.append(source)
+    # Type metadata is sometimes exposed on a door/lock entity rather than on
+    # its battery sensor. Associate those attributes through the shared device.
+    type_by_device: dict[str, str] = {}
+    number_by_device: dict[str, int] = {}
+    for state in states:
+        entity_entry = entity_registry.async_get(state.entity_id)
+        battery_type = _battery_type_from_state(state)
+        battery_number = _battery_number_from_state(state)
+        if entity_entry and entity_entry.device_id and battery_type:
+            type_by_device.setdefault(entity_entry.device_id, battery_type)
+        if entity_entry and entity_entry.device_id and battery_number:
+            number_by_device.setdefault(entity_entry.device_id, battery_number)
+    sources = [
+        replace(
+            source,
+            battery_type=source.battery_type
+            or (type_by_device.get(source.device_id) if source.device_id else None),
+            battery_number=source.battery_number
+            or (number_by_device.get(source.device_id) if source.device_id else None),
+        )
+        for source in sources
     ]
     devices = deduplicate_sources(sources)
 

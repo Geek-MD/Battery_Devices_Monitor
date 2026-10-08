@@ -14,6 +14,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Preserved the established `sensor.battery_monitor_status` entity ID on clean installations under Home Assistant 2026.9's entity naming rules.
+## [2.1.3] - 2026-09-20
+
+### Fixed
+- Per-device tracking entities are now assigned directly to each existing Home Assistant device, without exposing foreign identifiers through `DeviceInfo` or registering additional devices under Battery Devices Monitor.
+- Migration removes legacy synthetic tracking devices and detaches Battery Devices Monitor from physical devices incorrectly claimed by versions 2.1.1 and 2.1.2, while preserving those devices under their original integrations.
+- Battery type choices no longer duplicate quantity (for example, `3x AA`); legacy combined values are migrated to battery type `AA` and battery number `3`.
+- Every setup removes obsolete tracking entities and synthetic devices, then active tracking entities are reassigned to the original August, ZHA, or other owning integration device. This idempotent cleanup also repairs installations which already attempted to load v2.1.3.
+- Reloads recover each device's existing tracking ID from the entity registry when registry cleanup changes its discovery aliases, preventing duplicate tracking entities and preserving stored battery metadata.
+- Entities created by Battery Devices Monitor are excluded from battery discovery even when attached to a real device, preventing recursive discovery and tracking-ID replacement on refresh or reload.
+
+## [2.1.2] - 2026-09-19
+
+### Fixed
+- Tracking entities are attached only to an existing Home Assistant device; the integration no longer creates duplicate “battery tracking” devices and removes legacy synthetic devices during migration.
+- Removed the obsolete free-text battery-type entity, leaving the battery-type dropdown as the single editor.
+- Devices whose metadata explicitly identifies mains, AC, DC, or wired power are excluded from battery discovery.
+
+## [2.1.1] - 2026-09-19
+
+### Added
+- Battery types are automatically read from common device attributes or dedicated battery type/size/model entities.
+- Per-device dropdowns provide common battery types and a battery quantity from 1 to 16, while preserving values supplied by integrations.
+- Battery quantity is detected from common count/quantity attributes or dedicated entities when available.
+
+### Changed
+- Replaced the elapsed-day “Battery Age” display with a “Last Battery Change” timestamp and renamed “Reset Battery Age” to “Battery Changed”. Existing unique IDs remain stable.
+- Battery tracking, replacement, text, type, and quantity entities are attached to their corresponding Home Assistant physical device instead of a separate battery-tracking device whenever registry identity is available.
 
 ## [2.1.0] - 2026-09-17
 

@@ -9,6 +9,7 @@ from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 import probatio as vol
 
@@ -27,7 +28,11 @@ if TYPE_CHECKING:
 
 type BatteryMonitorConfigEntry = ConfigEntry[BatteryMonitorCoordinator]
 
-PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR, Platform.TEXT]
+PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
+    Platform.SELECT,
+    Platform.SENSOR,
+]
 _ENTITY_SERVICE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 
 
@@ -122,9 +127,75 @@ async def async_setup_entry(
     entry.runtime_data = coordinator
     coordinator.async_start()
 
+    _remove_legacy_tracking_registry_entries(hass, entry, coordinator)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     return True
+
+
+def _remove_legacy_tracking_registry_entries(
+    hass: HomeAssistant,
+    entry: BatteryMonitorConfigEntry,
+    coordinator: BatteryMonitorCoordinator | None = None,
+) -> None:
+    """Remove obsolete entities and every device incorrectly claimed by us.
+
+    Entity registry records are retained when a platform is removed.  Removing
+    the obsolete records here also removes the config-entry association which
+    v2.1.1/2.1.2 added to source devices by returning their identifiers in
+    ``DeviceInfo``. Only the integration's own monitor device is retained.
+    """
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
+
+    active_tracking_unique_ids = (
+        {
+            unique_id
+            for tracking_id in coordinator.active_tracking_ids
+            for unique_id in (
+                f"{DOMAIN}_{tracking_id}_battery_age",
+                f"{DOMAIN}_{tracking_id}_reset_battery_age",
+                f"{DOMAIN}_{tracking_id}_battery_type_select",
+                f"{DOMAIN}_{tracking_id}_battery_number",
+            )
+        }
+        if coordinator
+        else None
+    )
+    tracking_suffixes = (
+        "_battery_age",
+        "_reset_battery_age",
+        "_battery_type_select",
+        "_battery_number",
+    )
+    for entity in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+        if entity.domain == Platform.TEXT:
+            entity_registry.async_remove(entity.entity_id)
+        elif (
+            active_tracking_unique_ids is not None
+            and entity.unique_id.startswith(f"{DOMAIN}_")
+            and entity.unique_id.endswith(tracking_suffixes)
+            and entity.unique_id not in active_tracking_unique_ids
+        ):
+            entity_registry.async_remove(entity.entity_id)
+
+    monitor_identifier = (DOMAIN, entry.entry_id)
+    for device in list(
+        dr.async_entries_for_config_entry(device_registry, entry.entry_id)
+    ):
+        if monitor_identifier in device.identifiers:
+            continue
+        if any(domain == DOMAIN for domain, _identifier in device.identifiers):
+            device_registry.async_remove_device(device.id)
+            continue
+
+        # Do not delete a real device owned by another integration. Merely
+        # detach Battery Devices Monitor; the tracking entities are assigned
+        # directly to this device after their platform setup.
+        device_registry.async_update_device(
+            device.id, remove_config_entry_id=entry.entry_id
+        )
 
 
 async def async_unload_entry(
