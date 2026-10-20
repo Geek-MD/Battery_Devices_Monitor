@@ -110,6 +110,8 @@ For every deduplicated physical device, Battery Devices Monitor assigns its trac
 
 The replacement timestamp, battery type, and known source aliases are stored persistently by Home Assistant. They survive restarts and remain linked when a device changes its selected battery entity or is deduplicated through another integration. Tracking entities are created for every discovered battery device, including devices excluded from threshold alerts.
 
+Because the last-change timestamp, battery type, and battery count are stored independently of the live source, their tracking entities remain available if the source entity temporarily disappears. They become unavailable only when the coordinator itself cannot update or the stored tracking record no longer exists.
+
 When a valid battery reading rises by more than 50 percentage points compared with its previous valid reading, the integration creates a persistent notification for a possible battery replacement. The notification links directly to that device's **Battery changed** button and remains active until the button is pressed (or the notification is manually dismissed). Startup discovery, newly discovered devices, unavailable readings, and increases of exactly 50 points do not trigger the alert.
 
 The initial timestamp is recorded when version 2.1.0 or later first discovers a device; the integration cannot infer when an already-installed battery was physically inserted. Press **Battery changed** after installing a fresh battery to establish an accurate date.

@@ -348,6 +348,26 @@ async def test_setup_deduplication_and_reactive_update(
     assert update_type is persistent_notification.UpdateType.REMOVED
     assert f"{DOMAIN}_possible_battery_replacement_{lock_tracking_id}" in notifications
 
+    hass.states.async_remove("sensor.front_door_lock_battery")
+    hass.states.async_remove("binary_sensor.front_door_lock_battery_low")
+    await hass.async_block_till_done()
+    assert coordinator.device_for_tracking_id(lock_tracking_id) is None
+    assert hass.states.get(age_entity_id).state != "unavailable"
+    assert hass.states.get(reset_entity_id).state != "unavailable"
+    assert hass.states.get(type_select_entity_id).state != "unavailable"
+    assert hass.states.get(number_select_entity_id).state != "unavailable"
+
+    hass.states.async_set(
+        "sensor.front_door_lock_battery",
+        "61",
+        {
+            "device_class": "battery",
+            "unit_of_measurement": PERCENTAGE,
+            "friendly_name": "August battery",
+        },
+    )
+    await hass.async_block_till_done()
+
     assert await hass.config_entries.async_reload(monitor_entry.entry_id)
     await hass.async_block_till_done()
     reloaded_coordinator = monitor_entry.runtime_data

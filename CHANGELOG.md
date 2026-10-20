@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Startup discovery and newly discovered devices establish the comparison baseline without producing replacement alerts. Unavailable readings are ignored, and increases of exactly 50 percentage points do not trigger an alert.
 
+### Fixed
+- Per-device last-change, battery-changed, battery-type, and battery-number entities no longer become unavailable merely because their live battery source temporarily disappears; their values and controls remain backed by persistent tracking metadata.
+
 ## [2.2.0] - 2026-10-08
 
 ### Changed

@@ -29,8 +29,10 @@ class BatteryTrackingEntity(CoordinatorEntity[BatteryMonitorCoordinator]):
 
     @property
     def available(self) -> bool:
-        """Return whether the physical device is currently discovered."""
-        return super().available and self.tracked_device is not None
+        """Keep stored tracking controls usable without a live battery source."""
+        return super().available and self.coordinator.has_tracking_record(
+            self.tracking_id
+        )
 
     async def async_added_to_hass(self) -> None:
         """Assign this entity to the already existing physical device.

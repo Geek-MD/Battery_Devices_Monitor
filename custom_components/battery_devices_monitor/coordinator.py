@@ -349,6 +349,10 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
         device_id = self._active_tracking.get(tracking_id)
         return self.data.get(device_id) if device_id else None
 
+    def has_tracking_record(self, tracking_id: str) -> bool:
+        """Return whether persistent metadata exists for a tracking ID."""
+        return tracking_id in self._tracking_records
+
     def battery_type(self, tracking_id: str) -> str:
         """Return the user-entered battery type."""
         record = self._tracking_records.get(tracking_id)
