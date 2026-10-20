@@ -4,6 +4,12 @@ from typing import Final
 
 DOMAIN: Final = "battery_devices_monitor"
 
+# A rise greater than this many percentage points can indicate a new battery.
+BATTERY_REPLACEMENT_INCREASE: Final = 50
+BATTERY_REPLACEMENT_NOTIFICATION_PREFIX: Final = (
+    f"{DOMAIN}_possible_battery_replacement"
+)
+
 # Persistent per-device battery tracking
 STORAGE_VERSION: Final = 1
 STORAGE_KEY: Final = f"{DOMAIN}.battery_tracking"

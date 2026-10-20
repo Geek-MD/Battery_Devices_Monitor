@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-10-20
+
+### Added
+- A battery level increase of more than 50 percentage points now creates a per-device persistent notification warning of a possible battery replacement.
+- The notification links directly to the device's **Battery changed** button and is dismissed automatically when that button resets the last-change counter.
+
+### Changed
+- Startup discovery and newly discovered devices establish the comparison baseline without producing replacement alerts. Unavailable readings are ignored, and increases of exactly 50 percentage points do not trigger an alert.
+
 ## [2.2.0] - 2026-10-08
 
 ### Changed

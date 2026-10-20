@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from homeassistant.components import persistent_notification
 from homeassistant.const import ATTR_ENTITY_ID, PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
@@ -280,6 +281,72 @@ async def test_setup_deduplication_and_reactive_update(
     assert state.state == "Problem"
     assert state.attributes[ATTR_DEVICES_BELOW_THRESHOLD][0]["battery_level"] == 10
     assert len(events) == 1
+
+    notification_updates = []
+    persistent_notification.async_register_callback(
+        hass,
+        lambda update_type, notifications: notification_updates.append(
+            (update_type, notifications)
+        ),
+    )
+    hass.states.async_set(
+        "sensor.front_door_lock_battery",
+        "60",
+        {
+            "device_class": "battery",
+            "unit_of_measurement": PERCENTAGE,
+            "friendly_name": "August battery",
+        },
+    )
+    await hass.async_block_till_done()
+    assert notification_updates == []
+
+    hass.states.async_set(
+        "sensor.front_door_lock_battery",
+        "10",
+        {
+            "device_class": "battery",
+            "unit_of_measurement": PERCENTAGE,
+            "friendly_name": "August battery",
+        },
+    )
+    await hass.async_block_till_done()
+    hass.states.async_set(
+        "sensor.front_door_lock_battery",
+        "unavailable",
+        {
+            "device_class": "battery",
+            "unit_of_measurement": PERCENTAGE,
+            "friendly_name": "August battery",
+        },
+    )
+    await hass.async_block_till_done()
+    hass.states.async_set(
+        "sensor.front_door_lock_battery",
+        "61",
+        {
+            "device_class": "battery",
+            "unit_of_measurement": PERCENTAGE,
+            "friendly_name": "August battery",
+        },
+    )
+    await hass.async_block_till_done()
+
+    update_type, notifications = notification_updates[-1]
+    assert update_type is persistent_notification.UpdateType.ADDED
+    notification = next(iter(notifications.values()))
+    assert "increased from 10% to 61%" in notification["message"]
+    assert reset_entity_id in notification["message"]
+
+    await hass.services.async_call(
+        "button",
+        "press",
+        {ATTR_ENTITY_ID: reset_entity_id},
+        blocking=True,
+    )
+    update_type, notifications = notification_updates[-1]
+    assert update_type is persistent_notification.UpdateType.REMOVED
+    assert f"{DOMAIN}_possible_battery_replacement_{lock_tracking_id}" in notifications
 
     assert await hass.config_entries.async_reload(monitor_entry.entry_id)
     await hass.async_block_till_done()
