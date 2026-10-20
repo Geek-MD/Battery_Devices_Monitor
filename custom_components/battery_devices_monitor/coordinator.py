@@ -246,6 +246,7 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
             "_battery_age",
             "_reset_battery_age",
             "_battery_type_select",
+            "_battery_quantity",
             "_battery_number",
         )
         entity_registry = er.async_get(self.hass)

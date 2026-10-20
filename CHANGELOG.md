@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Startup discovery and newly discovered devices establish the comparison baseline without producing replacement alerts. Unavailable readings are ignored, and increases of exactly 50 percentage points do not trigger an alert.
+- Renamed **Battery number** to **Battery quantity** in every bundled translation and migrated the internal translation key and unique ID from `battery_number` to `battery_quantity`. Existing entity IDs and stored values are preserved for seamless upgrades.
 
 ### Fixed
 - Per-device last-change, battery-changed, battery-type, and battery-number entities no longer become unavailable merely because their live battery source temporarily disappears; their values and controls remain backed by persistent tracking metadata.

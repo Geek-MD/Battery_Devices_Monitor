@@ -174,25 +174,30 @@ async def test_setup_deduplication_and_reactive_update(
     type_select_entity_id = entity_registry.async_get_entity_id(
         "select", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_type_select"
     )
-    number_select_entity_id = entity_registry.async_get_entity_id(
-        "select", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_number"
+    quantity_select_entity_id = entity_registry.async_get_entity_id(
+        "select", DOMAIN, f"{DOMAIN}_{lock_tracking_id}_battery_quantity"
     )
     assert age_entity_id is not None
     assert reset_entity_id is not None
     assert type_select_entity_id is not None
-    assert number_select_entity_id is not None
+    assert quantity_select_entity_id is not None
     assert entity_registry.async_get(age_entity_id).device_id == august_device.id
     assert entity_registry.async_get(reset_entity_id).device_id == august_device.id
     assert (
         entity_registry.async_get(type_select_entity_id).device_id == august_device.id
     )
     assert (
-        entity_registry.async_get(number_select_entity_id).device_id == august_device.id
+        entity_registry.async_get(quantity_select_entity_id).device_id
+        == august_device.id
     )
     initial_change = datetime.fromisoformat(hass.states.get(age_entity_id).state)
     assert datetime.now(UTC) - initial_change < timedelta(minutes=1)
     assert hass.states.get(type_select_entity_id).state == "CR123A"
-    assert hass.states.get(number_select_entity_id).state == "2"
+    assert hass.states.get(quantity_select_entity_id).state == "2"
+    assert (
+        hass.states.get(quantity_select_entity_id).attributes["friendly_name"]
+        == "Front door lock Battery quantity"
+    )
     assert "2x AA" not in hass.states.get(type_select_entity_id).attributes["options"]
 
     await hass.services.async_call(
@@ -206,10 +211,10 @@ async def test_setup_deduplication_and_reactive_update(
     await hass.services.async_call(
         "select",
         "select_option",
-        {ATTR_ENTITY_ID: number_select_entity_id, "option": "3"},
+        {ATTR_ENTITY_ID: quantity_select_entity_id, "option": "3"},
         blocking=True,
     )
-    assert hass.states.get(number_select_entity_id).state == "3"
+    assert hass.states.get(quantity_select_entity_id).state == "3"
 
     coordinator._tracking_records[lock_tracking_id]["installed_at"] = (  # noqa: SLF001
         datetime.now(UTC) - timedelta(days=7)
@@ -355,7 +360,7 @@ async def test_setup_deduplication_and_reactive_update(
     assert hass.states.get(age_entity_id).state != "unavailable"
     assert hass.states.get(reset_entity_id).state != "unavailable"
     assert hass.states.get(type_select_entity_id).state != "unavailable"
-    assert hass.states.get(number_select_entity_id).state != "unavailable"
+    assert hass.states.get(quantity_select_entity_id).state != "unavailable"
 
     hass.states.async_set(
         "sensor.front_door_lock_battery",
@@ -368,10 +373,22 @@ async def test_setup_deduplication_and_reactive_update(
     )
     await hass.async_block_till_done()
 
+    entity_registry.async_update_entity(
+        quantity_select_entity_id,
+        new_unique_id=f"{DOMAIN}_{lock_tracking_id}_battery_number",
+        translation_key="battery_number",
+    )
     assert await hass.config_entries.async_reload(monitor_entry.entry_id)
     await hass.async_block_till_done()
     reloaded_coordinator = monitor_entry.runtime_data
     assert lock_tracking_id in reloaded_coordinator.active_tracking_ids
     assert hass.states.get(type_select_entity_id).state == "AA"
+    migrated_quantity = entity_registry.async_get(quantity_select_entity_id)
+    assert migrated_quantity is not None
+    assert (
+        migrated_quantity.unique_id == f"{DOMAIN}_{lock_tracking_id}_battery_quantity"
+    )
+    assert migrated_quantity.translation_key == "battery_quantity"
+    assert hass.states.get(quantity_select_entity_id).state == "3"
     reloaded_change = datetime.fromisoformat(hass.states.get(age_entity_id).state)
     assert datetime.now(UTC) - reloaded_change < timedelta(minutes=1)
