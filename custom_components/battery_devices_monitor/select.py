@@ -41,7 +41,7 @@ async def async_setup_entry(
         async_add_entities(
             entity_class(coordinator, tracking_id)
             for tracking_id in sorted(new_tracking_ids)
-            for entity_class in (BatteryTypeSelect, BatteryNumberSelect)
+            for entity_class in (BatteryTypeSelect, BatteryQuantitySelect)
         )
 
     async_add_battery_type_entities()
@@ -83,10 +83,10 @@ class BatteryTypeSelect(BatteryTrackingEntity, SelectEntity):
         )
 
 
-class BatteryNumberSelect(BatteryTrackingEntity, SelectEntity):
+class BatteryQuantitySelect(BatteryTrackingEntity, SelectEntity):
     """Select how many batteries the physical device requires."""
 
-    _attr_translation_key = "battery_number"
+    _attr_translation_key = "battery_quantity"
     _attr_icon = "mdi:counter"
     _attr_options = list(BATTERY_NUMBER_OPTIONS)
 
@@ -94,7 +94,7 @@ class BatteryNumberSelect(BatteryTrackingEntity, SelectEntity):
         self, coordinator: BatteryMonitorCoordinator, tracking_id: str
     ) -> None:
         super().__init__(coordinator, tracking_id)
-        self._attr_unique_id = f"{DOMAIN}_{tracking_id}_battery_number"
+        self._attr_unique_id = f"{DOMAIN}_{tracking_id}_battery_quantity"
 
     @property
     def current_option(self) -> str:

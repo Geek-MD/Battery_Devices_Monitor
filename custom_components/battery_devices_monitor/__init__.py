@@ -157,7 +157,7 @@ def _remove_legacy_tracking_registry_entries(
                 f"{DOMAIN}_{tracking_id}_battery_age",
                 f"{DOMAIN}_{tracking_id}_reset_battery_age",
                 f"{DOMAIN}_{tracking_id}_battery_type_select",
-                f"{DOMAIN}_{tracking_id}_battery_number",
+                f"{DOMAIN}_{tracking_id}_battery_quantity",
             )
         }
         if coordinator
@@ -167,9 +167,31 @@ def _remove_legacy_tracking_registry_entries(
         "_battery_age",
         "_reset_battery_age",
         "_battery_type_select",
+        "_battery_quantity",
         "_battery_number",
     )
-    for entity in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+    for entity in list(
+        er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    ):
+        if (
+            entity.domain == Platform.SELECT
+            and entity.unique_id.startswith(f"{DOMAIN}_")
+            and entity.unique_id.endswith("_battery_number")
+        ):
+            migrated_unique_id = (
+                f"{entity.unique_id[: -len('_battery_number')]}_battery_quantity"
+            )
+            if (
+                entity_registry.async_get_entity_id(
+                    Platform.SELECT, DOMAIN, migrated_unique_id
+                )
+                is None
+            ):
+                entity = entity_registry.async_update_entity(
+                    entity.entity_id,
+                    new_unique_id=migrated_unique_id,
+                    translation_key="battery_quantity",
+                )
         if entity.domain == Platform.TEXT:
             entity_registry.async_remove(entity.entity_id)
         elif (

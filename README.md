@@ -31,6 +31,7 @@ A Home Assistant custom integration that monitors battery-powered devices, provi
 - 🔄 On-demand rescan service to immediately re-discover battery entities after a device is reconfigured
 - 🔘 **Rescan button** on the device control page: a one-click button in the *Configuration* subsection that triggers an immediate rescan without leaving the UI
 - 📅 **Last battery change** timestamp for every deduplicated physical device
+- 🔔 **Possible battery replacement alert** when a level rises by more than 50 percentage points, with a direct link to confirm the change
 - ♻️ **Battery changed button** that records the current replacement date and time
 - 🔽 **Battery type and quantity detection**: reads common device metadata automatically and provides dropdowns for the battery format and the required number of batteries
 - 💾 Battery lifetime and type metadata persist across Home Assistant restarts and battery-source changes
@@ -105,9 +106,13 @@ For every deduplicated physical device, Battery Devices Monitor assigns its trac
 - **Last battery change** (`sensor`): date and time when the current battery was first tracked or its replacement was last recorded.
 - **Battery changed** (`button`): press this after physically replacing the battery. The sensor immediately records the current date and time.
 - **Battery type** (`select`): a dropdown of common formats without quantities (for example, `AA` rather than `3x AA`). The integration first imports a value exposed through `battery_type`, `battery_size`, `battery_model`, or `battery_format` metadata (including dedicated type/size/model entities); otherwise the user can select it manually.
-- **Battery number** (`select`): the number of batteries required by the device, from 1 to 16. The integration detects `battery_number`, `battery_count`, `battery_quantity`, or `number_of_batteries` metadata and dedicated entities; otherwise the user can choose it manually.
+- **Battery quantity** (`select`): the quantity of batteries required by the device, from 1 to 16. The integration detects `battery_number`, `battery_count`, `battery_quantity`, or `number_of_batteries` metadata and dedicated entities; otherwise the user can choose it manually.
 
 The replacement timestamp, battery type, and known source aliases are stored persistently by Home Assistant. They survive restarts and remain linked when a device changes its selected battery entity or is deduplicated through another integration. Tracking entities are created for every discovered battery device, including devices excluded from threshold alerts.
+
+Because the last-change timestamp, battery type, and battery count are stored independently of the live source, their tracking entities remain available if the source entity temporarily disappears. They become unavailable only when the coordinator itself cannot update or the stored tracking record no longer exists.
+
+When a valid battery reading rises by more than 50 percentage points compared with its previous valid reading, the integration creates a persistent notification for a possible battery replacement. The notification links directly to that device's **Battery changed** button and remains active until the button is pressed (or the notification is manually dismissed). Startup discovery, newly discovered devices, unavailable readings, and increases of exactly 50 points do not trigger the alert.
 
 The initial timestamp is recorded when version 2.1.0 or later first discovers a device; the integration cannot infer when an already-installed battery was physically inserted. Press **Battery changed** after installing a fresh battery to establish an accurate date.
 

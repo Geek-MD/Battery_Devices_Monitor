@@ -68,8 +68,8 @@
       "battery_type": {
         "name": "Tipo de batería"
       },
-      "battery_number": {
-        "name": "Número de baterías"
+      "battery_quantity": {
+        "name": "Cantidad de baterías"
       }
     }
   },

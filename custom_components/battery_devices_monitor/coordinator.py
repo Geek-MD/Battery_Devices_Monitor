@@ -9,6 +9,7 @@ import re
 from typing import TYPE_CHECKING, Any, TypedDict
 from uuid import uuid4
 
+from homeassistant.components import persistent_notification
 from homeassistant.core import CALLBACK_TYPE, Event, EventStateChangedData, callback
 from homeassistant.helpers.device_registry import (
     EVENT_DEVICE_REGISTRY_UPDATED,
@@ -26,7 +27,13 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
+from .const import (
+    BATTERY_REPLACEMENT_INCREASE,
+    BATTERY_REPLACEMENT_NOTIFICATION_PREFIX,
+    DOMAIN,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+)
 from .utils import discover_battery_devices, has_battery_attribute
 
 if TYPE_CHECKING:
@@ -77,6 +84,7 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
         self._storage_lock = asyncio.Lock()
         self._tracking_records: dict[str, BatteryTrackingRecord] = {}
         self._active_tracking: dict[str, str] = {}
+        self._previous_battery_levels: dict[str, float] = {}
 
     async def async_initialize_tracking(self) -> None:
         """Load persistent battery replacement dates and battery types."""
@@ -135,6 +143,7 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
         async with self._storage_lock:
             if self._reconcile_tracking(data):
                 await self._async_save_tracking()
+        self._detect_possible_battery_replacements(data)
         self._replace_battery_state_listener(
             {
                 entity_id
@@ -143,6 +152,73 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
             }
         )
         return data
+
+    @staticmethod
+    def _battery_level(device: dict[str, Any] | None) -> float | None:
+        """Return a valid numeric battery level from a discovered device."""
+        if device is None:
+            return None
+        level = device.get("battery_level")
+        if isinstance(level, bool) or not isinstance(level, int | float):
+            return None
+        return float(level)
+
+    @staticmethod
+    def _battery_replacement_notification_id(tracking_id: str) -> str:
+        """Return the stable persistent-notification ID for a tracked device."""
+        return f"{BATTERY_REPLACEMENT_NOTIFICATION_PREFIX}_{tracking_id}"
+
+    def _detect_possible_battery_replacements(self, data: BatteryDeviceData) -> None:
+        """Notify when a valid battery level rises by over 50 percentage points."""
+        current_levels = {
+            tracking_id: level
+            for tracking_id, level in self._previous_battery_levels.items()
+            if tracking_id in self._active_tracking
+        }
+        entity_registry = er.async_get(self.hass)
+
+        for tracking_id, device_id in self._active_tracking.items():
+            device = data.get(device_id)
+            current_level = self._battery_level(device)
+            if current_level is None:
+                continue
+            current_levels[tracking_id] = current_level
+
+            previous_level = self._previous_battery_levels.get(tracking_id)
+            if (
+                previous_level is None
+                or current_level - previous_level <= BATTERY_REPLACEMENT_INCREASE
+            ):
+                continue
+
+            button_entity_id = entity_registry.async_get_entity_id(
+                "button",
+                DOMAIN,
+                f"{DOMAIN}_{tracking_id}_reset_battery_age",
+            )
+            if button_entity_id is None:
+                _LOGGER.warning(
+                    "Possible battery replacement detected for %s, but its Battery "
+                    "changed button is not registered",
+                    device.get("name", device_id) if device else device_id,
+                )
+                continue
+
+            device_name = device.get("name", device_id) if device else device_id
+            persistent_notification.async_create(
+                self.hass,
+                title="Possible battery replacement detected",
+                message=(
+                    f"**{device_name}** increased from {previous_level:g}% to "
+                    f"{current_level:g}%. This may mean its battery was replaced.\n\n"
+                    f"[Open the Battery changed button]"
+                    f"(/config/entities/entity/{button_entity_id}) and press it to "
+                    "confirm the replacement and reset the last-change counter."
+                ),
+                notification_id=self._battery_replacement_notification_id(tracking_id),
+            )
+
+        self._previous_battery_levels = current_levels
 
     @staticmethod
     def _device_aliases(device_id: str, device: dict[str, Any]) -> set[str]:
@@ -170,6 +246,7 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
             "_battery_age",
             "_reset_battery_age",
             "_battery_type_select",
+            "_battery_quantity",
             "_battery_number",
         )
         entity_registry = er.async_get(self.hass)
@@ -273,6 +350,10 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
         device_id = self._active_tracking.get(tracking_id)
         return self.data.get(device_id) if device_id else None
 
+    def has_tracking_record(self, tracking_id: str) -> bool:
+        """Return whether persistent metadata exists for a tracking ID."""
+        return tracking_id in self._tracking_records
+
     def battery_type(self, tracking_id: str) -> str:
         """Return the user-entered battery type."""
         record = self._tracking_records.get(tracking_id)
@@ -311,6 +392,9 @@ class BatteryMonitorCoordinator(DataUpdateCoordinator[BatteryDeviceData]):
                 return
             record["installed_at"] = datetime.now(UTC).isoformat()
             await self._async_save_tracking()
+        persistent_notification.async_dismiss(
+            self.hass, self._battery_replacement_notification_id(tracking_id)
+        )
         self.async_update_listeners()
 
     async def async_set_battery_type(self, tracking_id: str, value: str) -> None:
