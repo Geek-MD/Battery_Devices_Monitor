@@ -488,6 +488,6 @@ For issues and feature requests, please use the [GitHub issue tracker](https://g
 
 <div align="center">
   
-💻 **Proudly developed with GitHub Copilot** 🚀
+💻 **Proudly developed with GitHub Copilot and ChatGPT Codex** 🚀
 
 </div>
