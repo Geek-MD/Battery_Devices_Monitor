@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -13,6 +15,7 @@ from homeassistant.core import State
 from custom_components.battery_devices_monitor.utils import (
     BatterySource,
     _declares_mains_power,
+    _zigbee_info,
     deduplicate_sources,
     get_battery_level,
     has_battery_but_unavailable,
@@ -39,6 +42,17 @@ def test_battery_power_metadata_is_not_excluded() -> None:
     assert not _declares_mains_power(
         State("sensor.remote_battery", "100", {"power_source": "battery"})
     )
+
+
+def test_zigbee_info_uses_single_config_entry_id() -> None:
+    """The device's singular config entry identifies its integration."""
+    config_entries = Mock()
+    config_entries.async_get_entry.return_value = SimpleNamespace(domain="zha")
+    hass = SimpleNamespace(config_entries=config_entries)
+    device_entry = SimpleNamespace(identifiers=set(), config_entry_id="zha-entry")
+
+    assert _zigbee_info(hass, device_entry) == (True, None)
+    config_entries.async_get_entry.assert_called_once_with("zha-entry")
 
 
 def _source(

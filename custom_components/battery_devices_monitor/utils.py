@@ -263,10 +263,9 @@ def _zigbee_info(
         if domain in ZIGBEE_INTEGRATION_DOMAINS:
             return True, str(value)
 
-    for config_entry_id in device_entry.config_entries:
-        config_entry = hass.config_entries.async_get_entry(config_entry_id)
-        if config_entry and config_entry.domain in ZIGBEE_INTEGRATION_DOMAINS:
-            return True, None
+    config_entry = hass.config_entries.async_get_entry(device_entry.config_entry_id)
+    if config_entry and config_entry.domain in ZIGBEE_INTEGRATION_DOMAINS:
+        return True, None
 
     return False, None
 
