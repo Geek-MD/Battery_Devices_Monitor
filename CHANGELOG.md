@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2026-11-05
+
+### Fixed
+
+- Replaced the deprecated device registry `DeviceEntry.config_entries` access with the singular `DeviceEntry.config_entry_id`, preserving Zigbee integration detection and compatibility with Home Assistant 2027.10.0 and later.
+
 ## [2.2.1] - 2026-10-20
 
 ### Added
