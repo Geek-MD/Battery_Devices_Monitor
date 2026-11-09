@@ -1,12 +1,14 @@
 {
   "domain": "battery_devices_monitor",
   "name": "Battery Devices Monitor",
+  "categories": ["sensors"],
   "codeowners": ["@Geek-MD"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/Geek-MD/Battery_Devices_Monitor",
+  "integration_type": "helper",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/Geek-MD/Battery_Devices_Monitor/issues",
   "requirements": [],
-  "version": "2.2.2"
+  "version": "2.2.3"
 }

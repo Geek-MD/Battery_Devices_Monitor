@@ -43,7 +43,8 @@ A Home Assistant custom integration that monitors battery-powered devices, provi
 Requires Home Assistant 2026.9.0 or newer. This is the first Home Assistant release
 whose validation engine is Probatio.
 
-Version 2.2.2 updates device registry integration detection to use the singular
+Version 2.2.3 adds the Marketplace classification metadata used by Home Assistant
+2026.11. Version 2.2.2 updated device registry integration detection to use the singular
 `DeviceEntry.config_entry_id` API, removing the deprecation warning and maintaining
 compatibility with Home Assistant 2027.10.0 and later.
 
