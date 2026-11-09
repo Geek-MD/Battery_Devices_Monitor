@@ -6,6 +6,10 @@
 [![License](https://img.shields.io/badge/License-MIT-blue)](https://github.com/Geek-MD/Battery_Devices_Monitor/blob/main/LICENSE)
 [![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom%20Repository-blue)](https://hacs.xyz/)
 
+<!-- ha-marketplace:exclude-start -->
+[![Open your Home Assistant instance and open Battery Devices Monitor in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=Geek-MD&repository=Battery_Devices_Monitor&category=integration)
+<!-- ha-marketplace:exclude-end -->
+
 [![Ruff + Mypy + Hassfest](https://github.com/Geek-MD/Battery_Devices_Monitor/actions/workflows/ci.yaml/badge.svg)](https://github.com/Geek-MD/Battery_Devices_Monitor/actions/workflows/ci.yaml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
@@ -15,7 +19,7 @@
 # Battery Devices Monitor
 A Home Assistant custom integration that monitors battery-powered devices, provides an overall "OK", "Warning", or "Problem" status, and tracks the lifetime and type of each device's battery.
 
-## Features
+## ✨ Features
 
 - 🔋 Automatically discovers all battery-powered devices using a reliable, language-independent hybrid strategy: `device_class: battery` (primary), well-known battery attributes (fallback 1), and entity-ID heuristic (fallback 2)
 - 🎯 Physical-device deduplication within one integration and across integrations such as August/Legrand or Ring/MQTT
@@ -38,16 +42,31 @@ A Home Assistant custom integration that monitors battery-powered devices, provi
 - ⚖️ Uses Probatio directly for config-flow and service-action schema validation
 - 🌐 Multi-language support (English, Spanish, French, Portuguese, and German)
 
-## Installation
+## 📋 Requirements
+
+## 🛠 Installation
 
 Requires Home Assistant 2026.9.0 or newer. This is the first Home Assistant release
 whose validation engine is Probatio.
 
-Version 2.2.2 updates device registry integration detection to use the singular
+Version 2.2.3 adds the Marketplace classification metadata used by Home Assistant
+2026.11. Version 2.2.2 updated device registry integration detection to use the singular
 `DeviceEntry.config_entry_id` API, removing the deprecation warning and maintaining
 compatibility with Home Assistant 2027.10.0 and later.
 
-### Manual Installation
+### Option 1: Marketplace (Home Assistant 2026.11 or newer)
+
+1. Go to **Settings → Marketplace**.
+2. Search for **Battery Devices Monitor**, select **Install**, and confirm the version.
+3. Complete setup when Home Assistant opens the integration page.
+
+### Option 2: HACS (Home Assistant 2026.9–2026.10 only)
+
+1. Add this repository as a custom repository in HACS.
+2. Search for **Battery Devices Monitor** and install it.
+3. Restart Home Assistant and add the integration through the UI.
+
+### Option 3: Manual installation
 
 1. Copy the `custom_components/battery_devices_monitor` directory to your Home Assistant's `custom_components` folder
 2. Restart Home Assistant
@@ -55,24 +74,14 @@ compatibility with Home Assistant 2027.10.0 and later.
 4. Search for "Battery Devices Monitor"
 5. Configure the battery threshold (default: 20%)
 
-### HACS Installation
-
-This integration can be installed through HACS:
-
-1. Add this repository as a custom repository in HACS
-2. Search for "Battery Devices Monitor" in HACS
-3. Install the integration
-4. Restart Home Assistant
-5. Add the integration via the UI
-
-## Configuration
+## ⚙️ Configuration
 
 The integration can be configured through the Home Assistant UI:
 
 - **Battery Threshold**: The battery level (1-100%) below which a device is considered to have a problem. Default is 20%.
 - **Excluded Devices**: Select one or more devices to exclude from monitoring. Devices are displayed with their assigned area (if any) in the format "Device Name (Area)" for easier identification. These can be configured in the integration options after initial setup.
 
-## Usage
+## 📊 Usage
 
 After installation and configuration, the integration creates the overall sensor `sensor.battery_monitor_status` (kept stable for both upgrades and clean installations) plus the per-device tracking entities described below.
 
@@ -193,7 +202,7 @@ automation:
             {% endfor %}
 ```
 
-## Services
+## 🖥 Services
 
 ### `battery_devices_monitor.get_low_battery_devices`
 
@@ -378,7 +387,7 @@ script:
       - service: battery_devices_monitor.rescan_battery_devices
 ```
 
-## Events
+## 📡 Events
 
 The integration fires the following events:
 
@@ -476,7 +485,7 @@ All checks run automatically via GitHub Actions on every commit.
 
 Contributions are welcome! Please ensure your code passes all CI checks before submitting a pull request.
 
-## License
+## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
